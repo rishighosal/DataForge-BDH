@@ -1,184 +1,207 @@
 # Fast Weights, Fixed Memory
 
-**DataForge × Pathway — "Explain the Frontier" track**
+An interactive explainer for the **DataForge 2026 Pathway track** ("Explain the Frontier").
+
 **Live artifact:** https://claude.ai/code/artifact/394c8c5a-8fe6-4a60-a136-c9ba087ad747
-**Local source:** [`index.html`](./index.html) (single file, zero build step, zero dependencies beyond one Google Fonts stylesheet)
+**One-page concept summary:** [`docs/one-pager.pdf`](docs/one-pager.pdf)
 
-## The one falsifiable claim this explainer teaches
+We wrote a hall allotment into a fixed-size matrix using BDH's synaptic update rule, then
+asked it where each student lives. It gets some of them wrong, and it gets them wrong in a
+specific and informative way: it hands back another student's real room, confidently. From
+there the page works out why, what three different published architectures do about it, and
+which of them is actually better (the answer is "at what?").
 
-> A constant-size matrix updated by outer-product ("Hebbian") writes can store and
-> retrieve many key→value associations with no memory growth — but retrieval quality
-> degrades in proportion to how many associations share that fixed capacity, while a
-> Transformer's explicit key–value cache never degrades because its memory grows with
-> every token it stores.
-
-You test this claim yourself in the artifact: store real (key, value) associations into
-a growing cache and into a constant-size matrix, query both back, and watch the numbers.
-
-## Intended learner & prerequisites
-
-Anyone comfortable with a dot product and a matrix-vector product. No machine-learning
-background, no linear-algebra course beyond "vectors have a length and an angle between
-them." If you've heard the terms "attention," "KV cache," or "context window" and want to
-know what a *fast weight* actually is, this is for you.
-
-## Learning objectives
-
-By the end, a learner should be able to:
-1. State why a Transformer's memory grows with sequence length, and why BDH's does not.
-2. Explain the outer-product ("Hebbian") write `S ← S + k·vᵀ` and why it is the same
-   operation the literature calls a "fast weight."
-3. Predict, without running the demo, what happens to retrieval accuracy when `n` (stored
-   associations) grows relative to `d` (memory dimension) — and verify the prediction live.
-4. Name one concrete architecture on each side of the memory-growth trade-off (a
-   Transformer's KV-cache vs. BDH's synaptic state vs. a gated fast-weight variant like
-   DeltaNet/Titans).
-5. State the single most important caveat: BDH's own paper documents the *mechanism*, not
-   the interference curve this demo produces — that curve is a toy demonstration of the
-   general fast-weight mechanism class, cross-checked against classical associative-memory
-   theory and the current (2025–2026) fast-weight literature.
-
-## Architecture — what's actually live
-
-**Everything in this artifact is computed live in the browser. Nothing is precomputed,
-cached, or a scripted animation.** Every slider drag re-derives the numbers from scratch
-using a seeded pseudo-random generator (a linear congruential generator identical to the
-one in [`verification/verify_memory.js`](./verification/verify_memory.js)), so results are
-reproducible: the same `(dimension, n, seed)` triple always produces the same matrix, the
-same stored vectors, and the same retrieval numbers, in the browser or in Node.
-
-The page has one reusable component (`createMemoryDemo` in the inline `<script>`), used
-five times:
-
-| Instance | Where | Locked? | Purpose |
-|---|---|---|---|
-| `hero` | Hero section | Locked (d=16, n=16, seed=1) | Open on a running preset, not a blank canvas |
-| `s1` / `s2` / `s3` | Guided walkthrough | Locked (d=16, n=4/16/64, seed=7) | Isolate one variable (`n`) at a time |
-| `sbx` | Sandbox | Free (d, n, query, collision, reseed) | Let the learner try to break the claim |
-
-Each instance runs the identical math:
-- **Cache memory**: pushes every `(key, value)` pair into a growing array. Retrieval is an
-  exact index lookup — by construction it can never be wrong. Memory = `n × d × 8 bytes`.
-- **Fast-weight memory**: one `d×d` matrix `S`, updated per pair via the outer-product
-  write `S[i][j] += k[i]·v[j]`. Retrieval is a matrix-vector product `v̂ = kᵀS`. Memory =
-  `d² × 4 bytes`, constant in `n`.
-- **Headline metric**: the *average* cosine similarity between every stored value and its
-  fast-weight retrieval (`averageSim` in the script) — a low-noise, robust number, since any
-  single query is one noisy draw from a random process. The specific item shown in the
-  "truth beside estimate" bar chart is one concrete illustration of that average.
-- **Theoretical reference curve**: `similarity ≈ √(d / (d + n − 1))`, the classical
-  first-order noise estimate for random-vector linear associative memory (derived in
-  [`verification/derivation.md`](./verification/derivation.md) and empirically matched
-  against 30-seed averages in [`verification/verify_memory.js`](./verification/verify_memory.js)).
-  Shown as the dashed line in every similarity chart, so the learner can see that a single
-  live run is noisy but tracks a real, derivable trend.
-- **"Force a collision"**: appends one more association whose key is a small random
-  perturbation of an existing key (cosine similarity high but not 1), demonstrating that
-  interference depends on key *similarity*, not just raw count.
-
-No chart library, no CDN dependency beyond Google Fonts (Fraunces / Source Sans 3 / IBM
-Plex Mono) — every chart, heatmap, and tooltip is hand-drawn inline SVG.
-
-## Reproducing the results
-
-```bash
-# 1. Open the artifact directly — no server, no install:
-open index.html   # or just double-click it / drag into a browser
-
-# 2. Independently verify the underlying math in Node (no browser needed):
-node verification/verify_memory.js
 ```
-`verify_memory.js` implements the identical outer-product memory and prints retrieval
-similarity at several `(d, n)` checkpoints across multiple seeds, plus a 30-seed average
-used to sanity-check the theoretical curve before it was wired into the page. Every number
-quoted in the artifact's guided-walkthrough copy (e.g. "n=4 → reliable," "n=64 → approaching
-noise") was checked against this script's output for the exact `(d=16, seed=7)` preset
-before being written — see [`verification/notes.md`](./verification/notes.md) for the
-checked values.
+git clone <this repo> && cd fast-weights-fixed-memory
+npm start          # http://localhost:4173 — no install step, there are no dependencies
+npm test           # 33 assertions over the memory maths
+npm run experiments  # regenerates every number quoted in the docs
+npm run build      # flattens src/ into dist/index.html
+```
 
-## What is live vs. precomputed vs. synthetic
+Node 18+. There is no `npm install`, because there is nothing to install.
 
-- **Live**: all charts, the heatmap, every retrieval number, the theoretical curve formula.
-- **Synthetic**: the "facts" being stored are random unit vectors, not real-world data —
-  stated explicitly in the artifact. This is a deliberate simplification so the geometry
-  (orthogonality, interference) is easy to see and to verify by hand; it is not a claim
-  about any specific real dataset.
-- **Precomputed**: nothing. (The only thing resembling precomputation is the *choice* of
-  seeds 1, 7, and 42 for the locked walkthrough/hero instances, picked because they run the
-  same live code — not because their output was cached.)
-- **Animated-for-illustration**: nothing; there are no illustrative animations standing in
-  for real computation anywhere on the page.
+---
 
-## Primary sources (see also the artifact's own "Sources" footer, cited inline throughout)
+## The claim
 
-1. Pathway. *The Dragon Hatchling: The Missing Link between the Transformer and Models of
-   the Brain.* [arXiv:2509.26507](https://arxiv.org/abs/2509.26507) (Sept 2025). Source for
-   the exact Hebbian/outer-product update equation `σ(i,j) += Y(i)X(j)` (§1.2), the "fast
-   weights" framing, and the ~5% neuron-activation sparsity (§6.4).
-2. Pathway Research. *BDH-CQ: In-Context Learning with Recurrent Latent Reasoning.*
-   [arXiv:2608.09888](https://arxiv.org/abs/2608.09888) (Aug 2026). Source for the additive
-   contextual-memory accumulation and the 29.5% pass@2 / $0.0007-per-task ARC-AGI-1 result.
-3. Behrouz, Zhong, et al. (Google Research). *Titans: Learning to Memorize at Test Time.*
-   [arXiv:2501.00663](https://arxiv.org/abs/2501.00663) (Jan 2025). Fast-weight associative
-   memory updated at test time with explicit forgetting via weight decay — the gated
-   counterpoint to BDH's pure accumulation.
-4. *Gated DeltaNet-2: Decoupling Erase and Write in Linear Attention.*
-   [arXiv:2605.22791](https://arxiv.org/abs/2605.22791) (2026). Current research on
-   correcting exactly the interference this demo reproduces via an error-corrective
-   delta-rule update.
-5. *Variational Linear Attention: Stable Associative Memory for Long-Context Transformers.*
-   [arXiv:2605.11196](https://arxiv.org/abs/2605.11196) (2026). Another 2026 paper attacking
-   the same associative-memory stability problem.
+> A fixed-size state has a fixed fidelity budget. The write rule cannot enlarge it, only
+> decide who gets it.
 
-All five were fetched and read directly (not recalled from model memory) before writing any
-claim that cites them; see `verification/notes.md` for what was confirmed from each source.
+Spelled out: a constant-size matrix updated by outer-product writes stores any number of
+key–value associations without growing, but the accuracy of what comes back falls as more
+associations share the same dimensions. Swapping in a cleverer write rule redistributes that
+accuracy across the stored items rather than creating more of it. A Transformer's KV cache
+never has to choose, and pays for that in memory that grows with every token.
 
-## AI assistance & technical ownership disclosure
+It is falsifiable and the page is the test: if a write rule raised recall everywhere at
+once, the comparison in "The finding" would show it. We started out believing the delta rule
+would be that rule. It is not, and finding that out is what the project ended up being about.
 
-Claude Code (Sonnet 5) assisted with: drafting the interactive artifact's HTML/CSS/JS,
-writing the standalone Node verification script, locating and fetching the primary sources
-above, and drafting this README and the one-page summary. The team:
-- Reviewed and can explain every function in `index.html` and `verification/verify_memory.js`.
-- Independently re-derived the theoretical similarity formula
-  (`verification/derivation.md`) rather than accepting it unchecked.
-- Verified each citation against the actual paper (not a secondhand summary) before it was
-  used to support a claim.
-- Chose the seeds used in the locked walkthrough steps after checking their output against
-  the verification script — not by cherry-picking among many seeds for a flattering curve
-  (see `verification/notes.md` for the actual search process and why an *average-over-all-
-  items* metric was adopted instead of a single noisy query).
+## Who it is for
 
-No AI-generated citations, numbers, or quotes appear anywhere in this submission; every
-number is either derived live from the code or was read directly from a cited primary
-source.
+Anyone who knows what a dot product is. No machine-learning background needed and no linear
+algebra beyond "a matrix times a vector is a vector". If you have heard of a KV cache and
+want to know what a *fast weight* actually is, that is exactly the gap this fills.
 
-## Files in this repository
+**Learning objectives.** After using it, a learner should be able to:
 
-| File | What it is |
+1. Write down the outer-product update `S ← S + k vᵀ` and say what it costs in memory.
+2. Predict what happens to recall when `n` rises or `d` falls, then check the prediction live.
+3. Explain why the failure mode is a confident wrong answer rather than noise.
+4. State what BDH's `σ(i,j) += Y(i)X(j)` has to do with linear attention and fast weights.
+5. Name what the delta rule and a decay gate buy you, and what they spend to buy it.
+6. Say which parts of the page are our toy model and which parts are in the papers.
+
+## What is live, what is precomputed, what is synthetic
+
+**Live.** Every score, chart, table cell and heatmap in the artifact is computed in the
+browser from a seeded generator when the page loads, and recomputed whenever you move a
+control. There is no server, no lookup table, no recorded animation. `dist/index.html` has
+no network dependency beyond a Google Fonts stylesheet.
+
+**Precomputed.** Exactly two blocks: the four-row sparsity table and the state-norm figures
+in the "Inside BDH" section. Both are averages over 40 seeds, which is too slow to run in a
+tab, and both are labelled as such where they appear. Regenerate with `npm run experiments`.
+
+**Synthetic.** The roster is invented. The names and room numbers are not anyone's real
+allotment; the hall abbreviations are the familiar IIT Kharagpur ones because the room codes
+should read like room codes to the people in the room. Keys and values are random vectors,
+which is a modelling choice we test rather than assume (see `docs/experiments.md` §4).
+
+## Architecture
+
+| Path | Role |
 |---|---|
-| `index.html` | The interactive artifact (open directly in any browser) |
-| `verification/verify_memory.js` | Standalone Node re-implementation of the memory math, used to check `index.html`'s numbers |
-| `verification/derivation.md` | The derivation of the theoretical similarity curve shown as the dashed line in the charts |
-| `verification/notes.md` | Working log of how default parameters were chosen, including a bug caught and fixed mid-build |
-| `ONE_PAGE_SUMMARY.md` / `.pdf` | The required one-page concept summary (also see `ONE_PAGE_SUMMARY.print.html`, the print-styled source the PDF was rendered from via headless Edge: `msedge --headless --print-to-pdf=ONE_PAGE_SUMMARY.pdf ONE_PAGE_SUMMARY.print.html`) |
-| `DEFENSE_NOTES.md` | Internal prep for the live-defense judging criterion — not part of the graded narrative |
-| `LICENSE` | MIT license for the original code |
+| `src/memory.js` | All the maths. RNG, vector generators, the three write rules, both memories, metrics. Imported unchanged by the browser, the tests and the experiment scripts. |
+| `src/roster.js` | The hall-allotment task and the decoder that turns a readout back into a room. |
+| `src/charts.js` | SVG line chart, grouped bars, matrix heatmap, vector bars. No chart library. |
+| `src/ui.js` | The four interactive components. Each recomputes from scratch on any change. |
+| `src/app.js` | Mounts components into the page. Holds no logic. |
+| `src/styles.css` | Design tokens and layout, light and dark. |
+| `index.html` | Dev entry. Loads `src/` as ES modules, so it needs `npm start`. |
+| `dist/index.html` | Built single file. Opens straight off disk; this is what gets published. |
+| `test/` | 33 assertions, `node --test`. |
+| `scripts/serve.js` | ~60-line static server. |
+| `scripts/build.js` | Flattens the modules into one file, and fails if two modules ever declare the same top-level name. |
+| `scripts/experiments.js` | The seven experiments behind `docs/experiments.md`. |
 
-## Credits & license
+There is one implementation of the memory maths and everything imports it. That is a
+deliberate reaction to a bug we hit early, where a Node copy and a browser copy of the same
+function disagreed for the same seed (`docs/build-log.md`, 2026-09-07).
 
-- Code (`index.html`, `verification/*`) — MIT License, see [`LICENSE`](./LICENSE).
-- Fonts: Fraunces, Source Sans 3, IBM Plex Mono — all via Google Fonts, each under the SIL
-  Open Font License.
-- No other third-party assets, datasets, or model weights are used.
-- Built by the team for DataForge (IIT Kharagpur) × Pathway, "Explain the Frontier" track.
+### The three write rules
+
+All three keep an identical `d × d` state and differ only at write time:
+
+| Rule | Update | Source |
+|---|---|---|
+| Hebbian | `S ← S + k vᵀ` | BDH's synaptic update [1, §1.2] |
+| Delta | `S ← S + β k (v − kᵀS)ᵀ` | "Delta-rule models subtract the current read before writing a new value" [4]; also one gradient step on Titans' memory loss `‖M(k) − v‖²` [3, eq. 11–12] |
+| Decay | `S ← λS + k vᵀ` | Titans' forgetting gate `M_t = (1−α_t)M_{t−1} + S_t` [3, eq. 13], with λ fixed rather than learned |
+
+### What the tests actually assert
+
+Not just arithmetic. The suite pins the claims the page makes out loud, so that if someone
+changes a parameter and a claim stops being true, the build fails rather than the page
+quietly lying:
+
+- the outer-product convention, checked against a hand-worked 2×2 case
+- the delta rule's defining property (write twice at one key, the second value comes back exactly)
+- decay at λ=1 is bit-identical to Hebbian
+- Hebbian is order-independent to 1e-9; decay is not
+- state size never changes; cache size grows by exactly one entry per write
+- the derived theory curve matches simulation within 0.06 across 40 seeds
+- delta beats Hebbian when nearly empty, and loses to it by >0.15 at n = 4d
+- Hebbian recall is flat across age (<0.05 spread); delta and decay tilt by >0.4
+- Hebbian's state norm tracks √n within 5%; delta's saturates
+- sparse keys at BDH's ~5% match dense within 0.03, and 25%-dense keys do not
+
+## Reproducing the numbers
+
+`npm run experiments` prints all seven tables and writes `results/experiments.json`. Forty
+seeds per cell. The headline results:
+
+- **Recall against load** (`d=32`): Hebbian tracks `√(d/(d+n−1))` to three decimals.
+- **The surprise**: averaged over everything stored, the delta rule beats Hebbian by 0.024 at
+  n=8 and loses by 0.208 at n=256.
+- **Why**: split by age, Hebbian varies 0.022 from oldest to newest; delta varies 0.767.
+- **Sparsity**: at BDH's ~5% activation the sparse and dense regimes agree within noise,
+  because 3-of-64 keys overlap only 14% of the time.
+- **State norm**: Hebbian's is √n to within 0.5% at n=512; delta's saturates near 5.6.
+
+Full tables and interpretation in [`docs/experiments.md`](docs/experiments.md). The theory
+curve is derived in [`docs/derivation.md`](docs/derivation.md).
 
 ## Known limitations
 
-- The demo uses dense random Gaussian vectors, not BDH's actual sparse non-negative
-  activations — a deliberate simplification, disclosed in the artifact's evidence-discipline
-  callout, not a reproduction of BDH itself.
-- The theoretical curve `√(d/(d+n−1))` is a first-order approximation (derivation in
-  `verification/derivation.md`); it assumes independent random unit-vector keys and gets
-  noisier as an approximation at very small `d`.
-- "Force a collision" perturbs a key by a fixed blend factor (0.35); it is illustrative of
-  the general phenomenon, not a parameter sweep over collision severity.
+Stated on the page as well, not just here.
+
+- **Our cache is an indexed lookup, not attention.** Real attention softmaxes over stored
+  keys and has its own failure modes. We index directly so the only variable under test is
+  whether memory grows. This makes the cache look more flawless than attention is.
+- **Cosine is scale-invariant, so it hides the state-norm problem.** This is the big one.
+  Hebbian looks best at high load partly because our metric cannot see its norm growing
+  without bound, which is exactly the pathology [5] is built to address. We measure the norm
+  separately rather than leave the gap unstated.
+- **λ is fixed; Titans learns α_t per step** and adds a momentum term we did not implement.
+  Our decay row is the idea of forgetting, not an implementation of Titans.
+- **Random keys, one layer, no training.** BDH feeds these synapses learned projections.
+  Learned keys should spread more deliberately than random ones; we have not measured by
+  how much.
+- **The theory curve is first-order** and is a dense-Gaussian result. It is deliberately
+  left on the chart in sparse mode so you can watch it stop fitting.
+- **20 facts is not a context window.** Everything is shrunk to fit on a screen.
+
+## Sources
+
+1. Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz. *The Dragon Hatchling: The
+   Missing Link between the Transformer and Models of the Brain.*
+   [arXiv:2509.26507](https://arxiv.org/abs/2509.26507), Sept 2025. — the `σ(i,j) += Y(i)X(j)`
+   update (§1.2), the "fast weights" framing, ~5% activation sparsity (§6.4).
+2. Engdahl, Kosowski, Chorowski, Stamirowska, Uznański, Jiang, Phadke, Kinas, Zhong.
+   *BDH-CQ: In-Context Learning with Recurrent Latent Reasoning.*
+   [arXiv:2608.09888](https://arxiv.org/abs/2608.09888), Aug 2026. — additively accumulating
+   contextual memory; 29.5% pass@2 on ARC-AGI-1 at $0.0007/task, 150M parameters.
+3. Behrouz, Zhong, Mirrokni. *Titans: Learning to Memorize at Test Time.*
+   [arXiv:2501.00663](https://arxiv.org/abs/2501.00663), Dec 2024. — memory loss
+   `‖M(k)−v‖²` (eq. 11–12), forgetting gate (eq. 13).
+4. Hatamizadeh, Choi, Kautz. *Gated DeltaNet-2: Decoupling Erase and Write in Linear
+   Attention.* [arXiv:2605.22791](https://arxiv.org/abs/2605.22791), May 2026. — the delta-rule
+   characterisation quoted above; separate channel-wise erase and write gates.
+5. Pandey, Singh. *Variational Linear Attention: Stable Associative Memory for Long-Context
+   Transformers.* [arXiv:2605.11196](https://arxiv.org/abs/2605.11196), May 2026. — state norm
+   growing with sequence length "causing progressive interference between stored associations".
+6. Pathway. *BDH reference implementation.* [github.com/pathwaycom/bdh](https://github.com/pathwaycom/bdh),
+   MIT. Its README notes the published Sudoku Extreme figure came from an internal
+   implementation and is not reproduced by the open repository — worth knowing before citing it.
+
+Every one of these was opened and read before it was used to support a claim. Where we cite
+a specific equation or section number, we checked it in the paper rather than in a summary.
+
+**Evidence discipline.** The BDH paper documents the mechanism; it does not publish a
+recall-against-capacity curve for its synapse matrix, and we have not run BDH. Every curve
+here is our own toy model of that mechanism. The interference phenomenon itself is
+independently documented in [3], [4] and [5]; we are demonstrating a known problem, not
+claiming to have found one. BDH-CQ's ARC-AGI-1 result is reported by its authors and, as far
+as we know, has not been independently reproduced.
+
+## Credits, licences, AI disclosure
+
+- Our code (`src/`, `test/`, `scripts/`) is MIT licensed. See [`LICENSE`](LICENSE).
+- Fonts: Fraunces, Source Sans 3, IBM Plex Mono, all via Google Fonts under the SIL Open
+  Font License. Loaded by URL, not vendored.
+- No other third-party code, data, weights or assets. No dependencies at all — `package.json`
+  has no `dependencies` or `devDependencies` block.
+- BDH and BDH-CQ are Pathway's work. We cite and discuss them; we redistribute nothing.
+
+**AI assistance.** We used Claude Code (Sonnet 5, later Opus 5) throughout as a coding and
+drafting assistant: it wrote much of the component and chart code, the first drafts of this
+README and the one-pager, and it did the initial literature search. What we did: chose the
+claim, designed the roster task and the experiments, re-derived the theory curve and the
+delta-rule transposition by hand, checked every equation, quotation, section number and
+figure against the primary papers, and wrote the tests that encode the claims. Two errors
+the assistant introduced and we caught are written up in
+[`docs/build-log.md`](docs/build-log.md) (2026-09-08), along with the metric mistake and the
+RNG desync that cost us most of an evening. We can trace and defend every component; that is
+what `docs/defense-notes.md` is for.

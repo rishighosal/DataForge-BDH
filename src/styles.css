@@ -1,0 +1,801 @@
+/* ------------------------------------------------------------------ *
+ * Tokens
+ *
+ * The four series colours were picked against a CVD/contrast validator
+ * rather than by eye, and re-picked for the dark surface instead of being
+ * flipped. Every series is also directly labelled, because the teal/copper
+ * pair sits in the tritanopia floor band where colour alone is not enough.
+ * ------------------------------------------------------------------ */
+
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-alt: #eaeef2;
+  --surface-sunken: #e3e8ee;
+  --border: #d8dee6;
+  --border-strong: #bdc6d1;
+
+  --ink: #171d25;
+  --ink-muted: #58616f;
+  --ink-faint: #858e9c;
+
+  --cache: #00a3a0;
+  --hebbian: #b8632e;
+  --delta: #7a5af5;
+  --decay: #4f7a28;
+
+  --div-neg: #3762a8;
+  --div-mid: #9098a5;
+  --div-pos: #a8447a;
+
+  --ok: #1e8e5a;
+  --warn: #a9791e;
+  --bad: #bf3d3d;
+
+  --focus: #2a64c7;
+  --shadow-sm: 0 1px 2px rgba(23, 29, 37, 0.06);
+  --shadow-md: 0 1px 2px rgba(23, 29, 37, 0.05), 0 10px 28px rgba(23, 29, 37, 0.07);
+
+  --measure: 36rem;
+  --radius: 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #10131a;
+    --surface: #171b24;
+    --surface-alt: #1d2230;
+    --surface-sunken: #12161e;
+    --border: #29303e;
+    --border-strong: #3a4354;
+
+    --ink: #e7ecf3;
+    --ink-muted: #94a1b5;
+    --ink-faint: #6a7484;
+
+    --cache: #28a8a2;
+    --hebbian: #c56e36;
+    --delta: #8b78f0;
+    --decay: #6e9e42;
+
+    --div-neg: #5285c6;
+    --div-mid: #7a8699;
+    --div-pos: #b565a0;
+
+    --ok: #4cc189;
+    --warn: #e0a94c;
+    --bad: #e2685b;
+
+    --focus: #7fa6e8;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.36);
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #10131a;
+  --surface: #171b24;
+  --surface-alt: #1d2230;
+  --surface-sunken: #12161e;
+  --border: #29303e;
+  --border-strong: #3a4354;
+
+  --ink: #e7ecf3;
+  --ink-muted: #94a1b5;
+  --ink-faint: #6a7484;
+
+  --cache: #28a8a2;
+  --hebbian: #c56e36;
+  --delta: #8b78f0;
+  --decay: #6e9e42;
+
+  --div-neg: #5285c6;
+  --div-mid: #7a8699;
+  --div-pos: #b565a0;
+
+  --ok: #4cc189;
+  --warn: #e0a94c;
+  --bad: #e2685b;
+
+  --focus: #7fa6e8;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 28px rgba(0, 0, 0, 0.36);
+}
+
+/* ------------------------------------------------------------------ *
+ * Base
+ * ------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: balance;
+  letter-spacing: -0.005em;
+}
+
+h2 {
+  font-size: clamp(1.5rem, 3vw, 2.05rem);
+}
+
+h3 {
+  font-size: 1.16rem;
+}
+
+p {
+  margin: 0;
+}
+
+a {
+  color: var(--cache);
+  text-underline-offset: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--hebbian);
+  color: #fff;
+}
+
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+.prose {
+  max-width: var(--measure);
+}
+
+.prose p + p {
+  margin-top: 0.8em;
+}
+
+.muted {
+  color: var(--ink-muted);
+}
+
+.eyebrow {
+  margin: 0;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.71rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--hebbian);
+}
+
+/* ------------------------------------------------------------------ *
+ * Layout
+ * ------------------------------------------------------------------ */
+
+.wrap {
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 0 clamp(16px, 4vw, 44px);
+}
+
+section {
+  padding: clamp(38px, 5.5vw, 72px) 0;
+}
+
+section + section {
+  border-top: 1px solid var(--border);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.section-head {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(20px, 3vw, 36px);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ------------------------------------------------------------------ *
+ * Top bar
+ * ------------------------------------------------------------------ */
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-inner {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  height: 54px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.topbar-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.brand span {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.navlinks {
+  display: flex;
+  gap: 18px;
+  white-space: nowrap;
+}
+
+.navlinks a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.navlinks a:hover {
+  color: var(--hebbian);
+}
+
+/* ------------------------------------------------------------------ *
+ * Cards, callouts, pills
+ * ------------------------------------------------------------------ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: clamp(16px, 2vw, 24px);
+}
+
+.callout {
+  border-left: 3px solid var(--hebbian);
+  background: var(--surface-alt);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 16px 20px;
+}
+
+.callout.evidence {
+  border-left-color: var(--warn);
+}
+
+.callout.finding {
+  border-left-color: var(--delta);
+}
+
+.eq {
+  font-family: 'IBM Plex Mono', monospace;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-size: 0.92rem;
+  overflow-x: auto;
+}
+
+.pill {
+  display: inline-block;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  color: var(--ink-muted);
+  background: var(--surface);
+  white-space: nowrap;
+}
+
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: currentColor;
+}
+
+.tag.ok {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 13%, transparent);
+}
+
+.tag.warn {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 15%, transparent);
+}
+
+.tag.bad {
+  color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 14%, transparent);
+}
+
+/* ------------------------------------------------------------------ *
+ * Controls
+ * ------------------------------------------------------------------ */
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 14px 18px;
+  align-items: end;
+}
+
+.control label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 6px;
+}
+
+.control label .value {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+/* Maths variables inside an uppercased label. Without this, CSS helpfully turns
+   d into D and λ into Λ, which are different symbols. */
+.control label .lit {
+  text-transform: none;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+input[type='range'] {
+  width: 100%;
+  accent-color: var(--hebbian);
+  margin: 0;
+}
+
+select,
+button {
+  font: inherit;
+}
+
+select {
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.88rem;
+}
+
+.btn {
+  padding: 8px 13px;
+  border-radius: 9px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn:hover {
+  border-color: var(--hebbian);
+  color: var(--hebbian);
+}
+
+.btn.primary {
+  background: var(--hebbian);
+  border-color: var(--hebbian);
+  color: #fff;
+}
+
+.btn.primary:hover {
+  color: #fff;
+  filter: brightness(1.06);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--border-strong);
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.seg button {
+  border: 0;
+  background: var(--surface);
+  color: var(--ink-muted);
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.seg button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--surface-alt);
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------------ *
+ * Roster board
+ * ------------------------------------------------------------------ */
+
+.board {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 9px 13px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.board td.name {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.board td.room {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.answer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.answer .mark {
+  width: 15px;
+  flex: none;
+  font-weight: 700;
+}
+
+.answer.right .mark {
+  color: var(--ok);
+}
+
+.answer.wrong .mark {
+  color: var(--bad);
+}
+
+.answer.wrong .said {
+  color: var(--bad);
+  font-weight: 600;
+}
+
+.answer .said {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+tr.is-wrong {
+  background: color-mix(in srgb, var(--bad) 6%, transparent);
+}
+
+.scoreline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 22px;
+  align-items: center;
+  padding: 12px 0 0;
+}
+
+.score {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.score .label {
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--ink-muted);
+}
+
+.score .num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 1.24rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ------------------------------------------------------------------ *
+ * Charts
+ * ------------------------------------------------------------------ */
+
+.chart {
+  position: relative;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.chart text {
+  fill: var(--ink-muted);
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+.chart-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  margin-bottom: 10px;
+}
+
+.tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 6;
+  background: var(--ink);
+  color: var(--bg);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1.5;
+  padding: 7px 9px;
+  border-radius: 8px;
+  white-space: nowrap;
+  transform: translate(-50%, -108%);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 0.8rem;
+  color: var(--ink-muted);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex: none;
+}
+
+.swatch.dashed {
+  height: 0;
+  width: 15px;
+  border-radius: 0;
+  border-top: 2px dashed currentColor;
+  background: none !important;
+}
+
+/* ------------------------------------------------------------------ *
+ * Quiz
+ * ------------------------------------------------------------------ */
+
+.quiz-item + .quiz-item {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.quiz-option {
+  text-align: left;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.quiz-option:hover:not(:disabled) {
+  border-color: var(--hebbian);
+}
+
+.quiz-option:disabled {
+  cursor: default;
+}
+
+.quiz-option.correct {
+  border-color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 11%, var(--surface));
+}
+
+.quiz-option.incorrect {
+  border-color: var(--bad);
+  background: color-mix(in srgb, var(--bad) 11%, var(--surface));
+}
+
+.quiz-feedback {
+  margin-top: 10px;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------------ *
+ * Footer
+ * ------------------------------------------------------------------ */
+
+footer {
+  padding: 44px 0 64px;
+  border-top: 1px solid var(--border);
+}
+
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  font-size: 0.88rem;
+  max-width: 58rem;
+}
+
+.sources .ref {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.72rem;
+  color: var(--ink-faint);
+  margin-right: 6px;
+}
+
+.colophon {
+  margin-top: 28px;
+  font-size: 0.82rem;
+  color: var(--ink-faint);
+  max-width: 58rem;
+}
+
+.colophon p + p {
+  margin-top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "fast-weights-fixed-memory",
+  "version": "1.0.0",
+  "description": "Interactive explainer: outer-product fast-weight memory vs. the Transformer KV cache, grounded in BDH's Hebbian synaptic update.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "dev": "node scripts/serve.js",
+    "test": "node --test",
+    "experiments": "node scripts/experiments.js",
+    "build": "node scripts/build.js",
+    "check": "npm test && npm run build && npm run pdf",
+    "pdf": "node scripts/one-pager.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "associative-memory",
+    "fast-weights",
+    "linear-attention",
+    "kv-cache",
+    "bdh",
+    "dragon-hatchling",
+    "explainer"
+  ]
+}

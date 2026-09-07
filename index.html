@@ -1,450 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fast Weights, Fixed Memory</title>
+<meta name="description" content="Store a hall allotment in a fixed-size matrix, ask it where everyone lives, and watch a Transformer's KV cache stay perfect while the matrix starts confusing people. Built on BDH's Hebbian synaptic update.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
-<style>
-  :root{
-    --bg:#F4F6F8; --surface:#FFFFFF; --surface-alt:#EEF1F4; --surface-raised:#FFFFFF;
-    --border:#DDE3EA; --border-strong:#C3CBD4;
-    --ink:#1A2028; --ink-muted:#5B6472; --ink-faint:#8993A2;
-    --accent-cache:#00A3A0; --accent-fw:#B8632E;
-    --div-neg:#3762A8; --div-pos:#A8447A; --div-mid:#9098A5;
-    --status-good:#1E8E5A; --status-warn:#A9791E; --status-crit:#B8452F;
-    --focus:#2A64C7;
-    --shadow: 0 1px 2px rgba(20,25,35,.06), 0 8px 24px rgba(20,25,35,.06);
-  }
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]){
-      --bg:#10131A; --surface:#171B24; --surface-alt:#1D2230; --surface-raised:#1B2130;
-      --border:#2A3140; --border-strong:#384154;
-      --ink:#E8ECF2; --ink-muted:#93A0B4; --ink-faint:#6B7686;
-      --accent-cache:#28A8A2; --accent-fw:#C56E36;
-      --div-neg:#5285C6; --div-pos:#B565A0; --div-mid:#7A8699;
-      --status-good:#4CC189; --status-warn:#E0A94C; --status-crit:#E2685B;
-      --focus:#7FA6E8;
-      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
-    }
-  }
-  :root[data-theme="dark"]{
-    --bg:#10131A; --surface:#171B24; --surface-alt:#1D2230; --surface-raised:#1B2130;
-    --border:#2A3140; --border-strong:#384154;
-    --ink:#E8ECF2; --ink-muted:#93A0B4; --ink-faint:#6B7686;
-    --accent-cache:#28A8A2; --accent-fw:#C56E36;
-    --div-neg:#5285C6; --div-pos:#B565A0; --div-mid:#7A8699;
-    --status-good:#4CC189; --status-warn:#E0A94C; --status-crit:#E2685B;
-    --focus:#7FA6E8;
-    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
-  }
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
 
-  *{box-sizing:border-box;}
-  body{
-    background:var(--bg); color:var(--ink);
-    font-family:"Source Sans 3", ui-sans-serif, system-ui, sans-serif;
-    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
-  }
-  ::selection{ background:var(--accent-fw); color:#fff; }
-  a{ color:var(--accent-cache); }
-  a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
-    outline:2px solid var(--focus); outline-offset:2px; border-radius:4px;
-  }
-  h1,h2,h3,h4{ font-family:"Fraunces", ui-serif, Georgia, serif; font-weight:600; text-wrap:balance; margin:0; color:var(--ink); }
-  .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
-  .tnum{ font-variant-numeric: tabular-nums; }
-  p{ margin:0; }
-  .prose{ max-width:38rem; }
-  .prose p + p{ margin-top:.85em; }
-  .eyebrow{
-    font-family:"IBM Plex Mono", monospace; font-size:.72rem; letter-spacing:.12em;
-    text-transform:uppercase; color:var(--accent-fw); font-weight:600;
-  }
-
-  .wrap{ max-width:1180px; margin:0 auto; padding:0 clamp(16px,4vw,48px); }
-  .prose-wrap{ max-width:840px; margin:0 auto; padding:0 clamp(16px,4vw,48px); }
-
-  /* nav */
-  .topnav{
-    position:sticky; top:0; z-index:40; background:color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter:blur(8px); border-bottom:1px solid var(--border);
-  }
-  .topnav-inner{ display:flex; align-items:center; gap:20px; height:52px; overflow-x:auto; }
-  .topnav-brand{ font-family:"IBM Plex Mono",monospace; font-size:.8rem; font-weight:600; white-space:nowrap; color:var(--ink); text-decoration:none; }
-  .topnav-links{ display:flex; gap:18px; white-space:nowrap; }
-  .topnav-links a{ font-size:.85rem; color:var(--ink-muted); text-decoration:none; font-weight:600; }
-  .topnav-links a:hover{ color:var(--accent-fw); }
-
-  section{ padding:clamp(40px,6vw,80px) 0; }
-  section + section{ border-top:1px solid var(--border); }
-
-  /* hero */
-  .hero{ padding-top:clamp(48px,7vw,88px); }
-  .hero-grid{ display:grid; grid-template-columns: 1.05fr .95fr; gap:clamp(24px,4vw,56px); align-items:center; }
-  @media (max-width:900px){ .hero-grid{ grid-template-columns:1fr; } }
-  .claim{ font-size:clamp(1.7rem,3.4vw,2.5rem); line-height:1.18; letter-spacing:-.01em; }
-  .claim em{ font-style:normal; color:var(--accent-fw); }
-  .claim .cache-em{ color:var(--accent-cache); }
-  .meta-row{ display:flex; flex-wrap:wrap; gap:8px 10px; margin-top:22px; }
-  .pill{
-    font-family:"IBM Plex Mono",monospace; font-size:.72rem; font-weight:500; padding:5px 10px;
-    border-radius:999px; border:1px solid var(--border-strong); color:var(--ink-muted); background:var(--surface);
-  }
-  .hero-card{
-    background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow);
-    padding:18px;
-  }
-
-  /* cards / callouts */
-  .card{ background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px; }
-  .callout{ border-left:3px solid var(--accent-fw); background:var(--surface-alt); border-radius:0 10px 10px 0; padding:16px 18px; }
-  .callout.evidence{ border-left-color:var(--status-warn); }
-  .callout.good{ border-left-color:var(--status-good); }
-  .eq-box{
-    font-family:"IBM Plex Mono",monospace; background:var(--surface-alt); border:1px solid var(--border);
-    border-radius:10px; padding:16px 18px; font-size:.95rem; overflow-x:auto;
-  }
-
-  /* legend / badges */
-  .legend{ display:flex; gap:16px; flex-wrap:wrap; font-size:.82rem; color:var(--ink-muted); }
-  .legend-item{ display:flex; align-items:center; gap:6px; }
-  .swatch{ width:12px; height:12px; border-radius:3px; display:inline-block; flex:none; }
-  .swatch.cache{ background:var(--accent-cache); }
-  .swatch.fw{ background:var(--accent-fw); }
-  .swatch.theory{ background:none; border:2px dashed var(--accent-fw); width:14px; height:0; border-radius:0; }
-
-  .badge{
-    display:inline-flex; align-items:center; gap:5px; font-family:"IBM Plex Mono",monospace;
-    font-size:.72rem; font-weight:600; padding:3px 9px; border-radius:999px; letter-spacing:.02em;
-  }
-  .badge::before{ content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
-  .badge.b-good{ color:var(--status-good); background:color-mix(in srgb, var(--status-good) 14%, transparent); }
-  .badge.b-warn{ color:var(--status-warn); background:color-mix(in srgb, var(--status-warn) 16%, transparent); }
-  .badge.b-crit{ color:var(--status-crit); background:color-mix(in srgb, var(--status-crit) 16%, transparent); }
-
-  /* walkthrough steps */
-  .step{ display:grid; grid-template-columns: .8fr 1.2fr; gap:28px; align-items:start; padding:28px 0; }
-  .step + .step{ border-top:1px dashed var(--border); }
-  @media (max-width:880px){ .step{ grid-template-columns:1fr; } }
-  .step-num{
-    font-family:"IBM Plex Mono",monospace; font-size:.75rem; color:var(--ink-faint); letter-spacing:.08em;
-  }
-
-  /* demo component */
-  .demo{ background:var(--surface); border:1px solid var(--border); border-radius:16px; padding:20px; box-shadow:var(--shadow); }
-  .demo-grid{ display:grid; grid-template-columns: 230px 1fr; gap:22px; }
-  @media (max-width:760px){ .demo-grid{ grid-template-columns:1fr; } }
-  .demo-panels{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  @media (max-width:620px){ .demo-panels{ grid-template-columns:1fr; } }
-  .panel-title{ font-size:.78rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-muted); margin-bottom:8px; }
-
-  .controls{ display:flex; flex-direction:column; gap:16px; }
-  .ctl label{ display:flex; justify-content:space-between; font-size:.8rem; font-weight:600; color:var(--ink-muted); margin-bottom:6px; }
-  .ctl label .val{ font-family:"IBM Plex Mono",monospace; color:var(--ink); }
-  input[type=range]{ width:100%; accent-color:var(--accent-fw); }
-  select{
-    width:100%; font:inherit; padding:6px 8px; border-radius:8px; border:1px solid var(--border-strong);
-    background:var(--surface); color:var(--ink);
-  }
-  .btn{
-    font:inherit; font-weight:600; font-size:.82rem; padding:8px 12px; border-radius:9px;
-    border:1px solid var(--border-strong); background:var(--surface); color:var(--ink); cursor:pointer;
-  }
-  .btn:hover{ border-color:var(--accent-fw); color:var(--accent-fw); }
-  .btn.primary{ background:var(--accent-fw); border-color:var(--accent-fw); color:#fff; }
-  .btn.primary:hover{ opacity:.9; color:#fff; }
-  .btn-row{ display:flex; gap:8px; flex-wrap:wrap; }
-
-  svg text{ fill:var(--ink-muted); font-family:"IBM Plex Mono",monospace; }
-  .chart-wrap{ position:relative; }
-  .tooltip{
-    position:absolute; pointer-events:none; background:var(--ink); color:var(--bg);
-    font-family:"IBM Plex Mono",monospace; font-size:.72rem; padding:6px 9px; border-radius:8px;
-    transform:translate(-50%,-115%); white-space:nowrap; opacity:0; transition:opacity .1s;
-    box-shadow:var(--shadow); z-index:5;
-  }
-  @media (prefers-reduced-motion:reduce){ .tooltip{ transition:none; } }
-
-  .readout{ display:flex; flex-direction:column; gap:10px; }
-  .readout-row{ display:grid; grid-template-columns:74px 1fr 56px; align-items:center; gap:10px; }
-  .readout-row .rlabel{ font-size:.75rem; font-weight:700; color:var(--ink-muted); }
-  .readout-row .rval{ font-family:"IBM Plex Mono",monospace; font-size:.78rem; text-align:right; }
-
-  /* table */
-  .table-wrap{ overflow-x:auto; border:1px solid var(--border); border-radius:12px; }
-  table{ border-collapse:collapse; width:100%; min-width:720px; font-size:.9rem; }
-  th,td{ text-align:left; padding:12px 14px; border-bottom:1px solid var(--border); vertical-align:top; }
-  thead th{ background:var(--surface-alt); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-muted); }
-  tbody tr:last-child td{ border-bottom:none; }
-  td .tag{ font-family:"IBM Plex Mono",monospace; font-size:.72rem; color:var(--ink-faint); }
-
-  /* misconceptions */
-  .misgrid{ display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
-  @media (max-width:880px){ .misgrid{ grid-template-columns:1fr; } }
-
-  /* quiz */
-  .quiz-q{ margin-bottom:26px; }
-  .quiz-opts{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
-  .quiz-opt{
-    text-align:left; padding:10px 14px; border-radius:10px; border:1px solid var(--border-strong);
-    background:var(--surface); color:var(--ink); cursor:pointer; font:inherit; font-size:.92rem;
-  }
-  .quiz-opt:hover:not(:disabled){ border-color:var(--accent-fw); }
-  .quiz-opt.correct{ border-color:var(--status-good); background:color-mix(in srgb, var(--status-good) 12%, var(--surface)); }
-  .quiz-opt.wrong{ border-color:var(--status-crit); background:color-mix(in srgb, var(--status-crit) 12%, var(--surface)); }
-  .quiz-opt:disabled{ cursor:default; opacity:.85; }
-  .quiz-feedback{ margin-top:10px; font-size:.88rem; color:var(--ink-muted); }
-
-  footer{ padding:40px 0 60px; }
-  .src-list{ display:flex; flex-direction:column; gap:10px; font-size:.88rem; }
-  .src-list .k{ color:var(--ink-faint); font-family:"IBM Plex Mono",monospace; font-size:.72rem; }
-  .footnote{ color:var(--ink-faint); font-size:.82rem; margin-top:26px; max-width:56rem; }
-
-  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:32px; }
-  @media (max-width:880px){ .grid2{ grid-template-columns:1fr; } }
-</style>
-
-<div class="topnav">
-  <div class="wrap topnav-inner">
-    <a class="topnav-brand" href="#top">🧠 FAST&nbsp;WEIGHTS,&nbsp;FIXED&nbsp;MEMORY</a>
-    <div class="topnav-links">
-      <a href="#walkthrough">Walkthrough</a>
-      <a href="#sandbox">Sandbox</a>
+<div class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="brand" href="#top">FAST WEIGHTS, FIXED MEMORY <span>· DataForge 2026</span></a>
+    <nav class="navlinks">
+      <a href="#claim">The claim</a>
+      <a href="#mechanism">Mechanism</a>
+      <a href="#budget">The finding</a>
       <a href="#bdh">Inside BDH</a>
-      <a href="#landscape">Landscape</a>
+      <a href="#limits">Limits</a>
       <a href="#quiz">Check yourself</a>
       <a href="#sources">Sources</a>
-    </div>
+    </nav>
   </div>
 </div>
 
-<a id="top"></a>
-<section class="hero">
-  <div class="wrap hero-grid">
-    <div>
-      <p class="eyebrow">DataForge × Pathway — Explain the Frontier</p>
-      <h1 class="claim" style="margin-top:10px;">
-        A <em>fixed-size matrix</em> can remember thousands of facts —
-        until the facts start writing over each other.
-      </h1>
-      <div class="prose" style="margin-top:18px;">
-        <p>A Transformer remembers every token it has seen by keeping an explicit,
-        ever-growing <span class="cache-em" style="color:var(--accent-cache); font-weight:600;">key–value cache</span>.
-        BDH remembers differently: it folds each new fact into one
-        <em>constant-size</em> synaptic matrix using an outer-product, Hebbian write —
-        the same operation researchers call a <strong>fast weight</strong>.</p>
-        <p>Below is a working copy of that trick, small enough to watch. You will store
-        real associations into both memories, query them back, and watch the fast‑weight
-        memory's answers get noisier while its size never changes.</p>
+<span id="top"></span>
+
+<!-- ============================================================ -->
+<section>
+  <div class="wrap">
+    <p class="eyebrow">DataForge 2026 · Pathway track · Explain the Frontier</p>
+    <h1 style="font-size:clamp(1.9rem,4vw,2.9rem); margin:14px 0 0; max-width:20ch">
+      Twenty students, one 16×16 matrix, and some wrong rooms.
+    </h1>
+    <div class="prose" style="margin-top:16px">
+      <p>We wrote a hall allotment into a fixed-size matrix, the same way the Dragon
+      Hatchling architecture writes a conversation into its synapses: one outer-product
+      update per fact, nothing else. Then we asked it where each student lives. The
+      answers below are computed in your browser as you load this page.</p>
+    </div>
+
+    <div class="panel" style="margin-top:24px">
+      <div id="hero-board"></div>
+    </div>
+
+    <div class="split" style="margin-top:22px">
+      <div class="prose">
+        <p>Nothing overflowed and nothing was deleted. The matrix holds exactly 2 KB
+        before the first student is written into it and exactly 2 KB after the twentieth.
+        A Transformer would have kept twenty separate key–value entries and answered every
+        question perfectly, using 5 KB to do it. That gap is small here and it is the
+        entire point: it widens with every student you add, and the matrix never moves.</p>
       </div>
-      <div class="meta-row">
-        <span class="pill">For: anyone who knows a dot product</span>
-        <span class="pill">No ML background required</span>
-        <span class="pill">~6 min, fully interactive</span>
-        <span class="pill">Live computation — nothing here is a canned animation</span>
+      <div class="prose">
+        <p>Look at what the mistakes are. The matrix does not return noise when it fails.
+        It returns another student's real room, confidently. That failure mode has a name
+        in the literature, and three different architectures published in the last two
+        years each pick a different way to live with it.</p>
       </div>
     </div>
-    <div class="hero-card">
-      <div class="panel-title">Live preview — already running</div>
-      <div id="hero-demo"></div>
+
+    <div class="pill-row" style="margin-top:22px">
+      <span class="pill">Prerequisite: you know what a dot product is</span>
+      <span class="pill">~8 minutes</span>
+      <span class="pill">Everything on this page is computed live</span>
+      <span class="pill">Synthetic roster, not real students</span>
     </div>
   </div>
 </section>
 
+<!-- ============================================================ -->
 <section id="claim">
-  <div class="prose-wrap">
-    <p class="eyebrow">The one falsifiable sentence</p>
-    <h2 style="font-size:clamp(1.3rem,2.4vw,1.7rem); margin-top:10px;">
-      A constant-size matrix updated by outer-product ("Hebbian") writes can store and
-      retrieve many key→value associations with no memory growth — but retrieval quality
-      degrades in proportion to how many associations share that fixed capacity, while a
-      Transformer's explicit key–value cache never degrades because its memory grows with
-      every token it stores.
-    </h2>
-    <div class="prose" style="margin-top:18px;">
-      <p>This is not textbook trivia. Two 2026 papers — <strong>Gated DeltaNet‑2</strong> and
-      <strong>Variational Linear Attention</strong> — exist specifically to fight the
-      degradation you're about to reproduce below, by adding correction and forgetting
-      terms to the same outer‑product update. If the sentence above is wrong, cranking the
-      sliders below should fail to show it. Try to break it.</p>
-    </div>
-  </div>
-</section>
-
-<section id="walkthrough">
   <div class="wrap">
-    <p class="eyebrow">Guided walkthrough</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin-top:10px; max-width:34rem;">
-      Same 16‑dimensional memory. Only the number of stored facts changes.
+    <div class="section-head">
+      <p class="eyebrow">The one sentence this page has to defend</p>
+    </div>
+    <h2 style="max-width:30ch">
+      A fixed-size state has a fixed fidelity budget. The write rule cannot enlarge it,
+      only decide who gets it.
     </h2>
-    <p class="prose" style="margin-top:12px; color:var(--ink-muted);">
-      All three steps below use the identical outer‑product memory, dimension <span class="mono">d&nbsp;=&nbsp;16</span>,
-      identical random seed. The only variable is <span class="mono">n</span>, how many
-      (key, value) pairs have been written. Watch the "estimate vs. truth" row and the
-      matrix on the right.
-    </p>
-
-    <div id="step-1" class="step">
-      <div>
-        <div class="step-num">STEP 1 OF 3</div>
-        <h3 style="font-size:1.2rem; margin-top:8px;">n = 4, d = 16 — plenty of headroom</h3>
-        <p class="prose" style="margin-top:10px; color:var(--ink-muted); font-size:.95rem;">
-          Four facts sharing 16 dimensions of capacity. Random 16‑dimensional vectors are
-          nearly orthogonal, so the outer‑product writes barely overlap. Both memories
-          answer correctly.
-        </p>
+    <div class="split" style="margin-top:20px">
+      <div class="prose">
+        <p>Spelled out properly: a constant-size matrix updated by outer-product writes
+        stores any number of key–value associations without growing, but the accuracy of
+        what comes back out falls as more associations share the same dimensions. Swapping
+        in a cleverer write rule redistributes that accuracy across the stored items. It
+        does not create more of it. A Transformer's key–value cache is the only option here
+        that never has to choose, and it pays for that in memory that grows with every
+        token.</p>
       </div>
-      <div class="demo-anchor"></div>
-    </div>
-
-    <div id="step-2" class="step">
-      <div>
-        <div class="step-num">STEP 2 OF 3</div>
-        <h3 style="font-size:1.2rem; margin-top:8px;">n = 16, d = 16 — capacity fully spent</h3>
-        <p class="prose" style="margin-top:10px; color:var(--ink-muted); font-size:.95rem;">
-          As many facts as dimensions. The cache is still perfect — it never has to share
-          space. The fast‑weight matrix's answer is visibly drifting from the true value:
-          the other 15 associations are now leaking into every readout.
-        </p>
+      <div class="prose">
+        <p>That is a falsifiable statement and the controls on this page are the test.
+        If a write rule existed that raised recall everywhere at once, the comparison in
+        <a href="#budget">the finding</a> would show it. Push the load up and watch which
+        curve moves. We were wrong about which rule wins, which is the most useful thing
+        that happened while building this.</p>
       </div>
-      <div class="demo-anchor"></div>
-    </div>
-
-    <div id="step-3" class="step">
-      <div>
-        <div class="step-num">STEP 3 OF 3</div>
-        <h3 style="font-size:1.2rem; margin-top:8px;">n = 64, d = 16 — four facts per dimension</h3>
-        <p class="prose" style="margin-top:10px; color:var(--ink-muted); font-size:.95rem;">
-          The cache is now 4× the size it was at Step 2, still perfect. The fast‑weight
-          matrix hasn't grown a single byte — and its answers are approaching noise. This
-          is the trade the whole family of "recurrent state" architectures makes.
-        </p>
-      </div>
-      <div class="demo-anchor"></div>
     </div>
   </div>
 </section>
 
-<section id="sandbox">
+<!-- ============================================================ -->
+<section id="mechanism">
   <div class="wrap">
-    <p class="eyebrow">Your turn</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin-top:10px;">Sandbox — try to break the claim</h2>
-    <p class="prose" style="margin-top:12px; color:var(--ink-muted); max-width:44rem;">
-      Every control below maps to one real variable in the computation running in your
-      browser right now (no server, no precomputed lookup table). Push <span class="mono">n</span>
-      far past <span class="mono">d</span>, then pull <span class="mono">d</span> back up and
-      watch the fast‑weight curve recover. Use "Force a collision" to see what happens when
-      two keys are nearly the same direction, regardless of how much spare capacity exists.
-    </p>
-    <div style="margin-top:26px;">
-      <div id="sandbox-demo"></div>
+    <div class="section-head">
+      <p class="eyebrow">Mechanism</p>
+      <h2>One matrix, one update, no allocation</h2>
+      <p class="prose muted">The whole trick is a single line of arithmetic. Given a key
+      <span class="mono">k</span> and a value <span class="mono">v</span>, add their outer
+      product to the state.</p>
+    </div>
+
+    <div class="split">
+      <div class="stack">
+        <div class="eq">S ← S + k vᵀ<br><span style="color:var(--ink-faint)">read it back with&nbsp; v̂ = kᵀS</span></div>
+        <div class="prose">
+          <p>If the keys are close to perpendicular, each one reads back mostly its own
+          value and only a little of everyone else's. That "only a little" is the entire
+          story. It accumulates. With <span class="mono">n</span> associations in
+          <span class="mono">d</span> dimensions, the crosstalk a query has to see past
+          grows like <span class="mono">(n−1)/d</span>, which puts the expected cosine
+          between what you get and what you stored at about
+          <span class="mono">√(d/(d+n−1))</span>. We derive that in
+          <span class="mono">docs/derivation.md</span> and check it against simulation
+          rather than asking you to take it on faith.</p>
+          <p>Drag the slider. The matrix on the left never changes size. The bars on the
+          right are what you stored against what comes back.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div id="matrix-inspector"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:28px">
+      <div id="capacity-lab"></div>
     </div>
   </div>
 </section>
 
+<!-- ============================================================ -->
+<section id="budget">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">The finding</p>
+      <h2>Three published write rules, one state, and a surprise</h2>
+      <p class="prose muted">All three of these keep exactly the same d×d matrix. They
+      differ only in what they do at write time.</p>
+    </div>
+
+    <div class="split">
+      <div class="stack">
+        <div class="card">
+          <h3 style="color:var(--hebbian)">Hebbian</h3>
+          <div class="eq" style="margin:10px 0">S ← S + k vᵀ</div>
+          <p class="muted" style="font-size:.9rem">Add and never subtract. This is BDH's
+          synaptic update, and it is order-independent: shuffle the writes and you get the
+          identical matrix.</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--delta)">Delta rule</h3>
+          <div class="eq" style="margin:10px 0">S ← S + β k (v − kᵀS)ᵀ</div>
+          <p class="muted" style="font-size:.9rem">Read the key first, then write only the
+          difference. Gated DeltaNet-2 puts it in one line: "delta-rule models subtract the
+          current read before writing a new value." It is also one gradient step on Titans'
+          memory loss ‖M(k) − v‖².</p>
+        </div>
+        <div class="card">
+          <h3 style="color:var(--decay)">Decay gate</h3>
+          <div class="eq" style="margin:10px 0">S ← λS + k vᵀ</div>
+          <p class="muted" style="font-size:.9rem">Fade everything slightly before each
+          write. This is Titans' forgetting gate with λ held fixed instead of learned. At
+          λ = 1 it is exactly Hebbian, which is why the slider goes that far.</p>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="panel">
+          <div class="chart-title">Recall by age of the association</div>
+          <div id="age-profile"></div>
+        </div>
+        <div class="callout finding">
+          <p style="font-weight:600; margin-bottom:8px">What we expected, and what we got</p>
+          <p class="prose" style="font-size:.93rem">We assumed the delta rule would beat
+          plain Hebbian everywhere, because that is what you would conclude from skimming
+          the abstracts. Averaged over everything stored, it does not. At four times
+          capacity our measurements put Hebbian at 0.449 and the delta rule at 0.241.
+          The chart above shows why. Hebbian spreads its fidelity perfectly evenly over
+          all of history. The delta rule spends almost all of it on recent writes, because
+          subtracting the current read before writing actively erases older content to make
+          room. Neither is better. They are answering different questions.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:30px">
+      <p class="eyebrow" style="margin-bottom:12px">The same roster, all three rules</p>
+      <div class="panel">
+        <div id="compare-board"></div>
+      </div>
+      <p class="prose muted" style="font-size:.85rem; margin-top:12px; max-width:60rem">
+        Watch <em>where</em> the crosses land rather than how many there are. Hebbian
+        scatters its mistakes through the list. The delta rule and the decay gate get the
+        students at the bottom right and lose the ones at the top, because those were
+        written first. Raise "names taught" to 20 and drop d to 12 to make it obvious.
+      </p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
 <section id="bdh">
   <div class="wrap">
-    <p class="eyebrow">Inside BDH</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin-top:10px; max-width:38rem;">
-      This is not an analogy. It's BDH's actual update rule.
-    </h2>
+    <div class="section-head">
+      <p class="eyebrow">Inside BDH</p>
+      <h2>The update above is not an analogy for BDH. It is BDH's update.</h2>
+    </div>
 
-    <div class="grid2" style="margin-top:26px;">
-      <div>
+    <div class="split">
+      <div class="stack">
         <div class="prose">
           <p>The Dragon Hatchling paper defines working memory as a synapse strength
-          <span class="mono">σ(i,j)</span> between neuron <span class="mono">i</span> and
-          neuron <span class="mono">j</span>, updated during inference by:</p>
+          σ(i,j) between two neurons, changed during inference by a rule it states in
+          words: co-presence of Y(i) followed by X(j) increases σ(i,j) by Y(i)X(j)
+          (§1.2). Written out, that is:</p>
         </div>
-        <div class="eq-box" style="margin-top:14px;">
-          σ(i,j) ← σ(i,j) + Y(i)·X(j)
-          <div style="color:var(--ink-faint); font-size:.8rem; margin-top:6px;">
-            — Dragon Hatchling, §1.2 (Pathway, arXiv:2509.26507). "Co‑presence... of Y(i)
-            followed by X(j) increases σ(i,j) by Y(i)X(j)."
+        <div class="eq">σ(i,j) ← σ(i,j) + Y(i)·X(j)</div>
+        <div class="prose">
+          <p>Same operation, different notation. Y takes the role of the key and X the
+          role of the value, and the paper itself calls the resulting state "fast weights"
+          and connects it to a linear-attention view. Our demo swaps neuron indices for
+          vector components and stops there.</p>
+          <p>The honest gap is the activations. BDH's Y and X are sparse and non-negative,
+          roughly 5% of neurons active at a time (§6.4). Ours are dense Gaussian vectors
+          whose signs cancel. Rather than list that as a caveat and move on, we measured
+          it.</p>
+        </div>
+
+        <div class="card">
+          <p style="font-weight:600; margin-bottom:10px">Does sparsity change the answer?</p>
+          <p class="muted" style="font-size:.9rem">Mean recall at d=64, Hebbian, 40 seeds
+          per cell. Run it yourself with <span class="mono">npm run experiments</span>.</p>
+          <div class="board" style="margin-top:12px">
+            <table>
+              <thead><tr><th>n</th><th>dense</th><th>3/64 active (~5%)</th><th>16/64 active (25%)</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">16</td><td class="mono">0.905</td><td class="mono">0.909</td><td class="mono">0.738</td></tr>
+                <tr><td class="mono">32</td><td class="mono">0.823</td><td class="mono">0.833</td><td class="mono">0.634</td></tr>
+                <tr><td class="mono">64</td><td class="mono">0.712</td><td class="mono">0.716</td><td class="mono">0.560</td></tr>
+                <tr><td class="mono">128</td><td class="mono">0.579</td><td class="mono">0.578</td><td class="mono">0.517</td></tr>
+              </tbody>
+            </table>
           </div>
-        </div>
-        <div class="prose" style="margin-top:16px;">
-          <p>That is an outer‑product write — exactly the <span class="mono">S ← S + k·vᵀ</span>
-          update running in the demo above, with <span class="mono">Y</span> playing the role
-          of the key and <span class="mono">X</span> the value. The paper itself names this
-          state "fast weights" and treats it as equivalent, in the relevant limit, to a
-          linear‑attention edge‑reweighting. The one real difference: BDH's <span class="mono">Y</span>
-          and <span class="mono">X</span> are sparse and non‑negative — about
-          <strong>5% of neurons active</strong> at a time (§6.4, "Empirical Finding 1") —
-          rather than the dense random vectors used above. Sparsity changes how quickly
-          capacity fills up; it does not change the mechanism.</p>
-          <p>BDH‑CQ (arXiv:2608.09888) reuses the same accumulation principle one level up:
-          its contextual memory state accumulates <em>additively</em> as each demonstration
-          is ingested, which the paper itself relates back to fast‑weight and
-          linear‑attention views of contextual association — the same "write, don't
-          replace" pattern, now applied to in‑context task demonstrations instead of
-          individual tokens.</p>
+          <p class="prose" style="font-size:.9rem; margin-top:12px">At BDH's reported
+          sparsity the two regimes agree to within noise, so the dense toy is a fair stand-in.
+          The reason is in the geometry: two 3-of-64 sparse keys share an active coordinate
+          only 14% of the time, and when they miss entirely their dot product is exactly
+          zero. That protection from disjoint supports roughly cancels the penalty of losing
+          sign cancellation. Push the density to 25% and the protection is gone, and recall
+          falls apart. You can switch the whole page into sparse mode with the "key
+          geometry" control above.</p>
         </div>
       </div>
 
-      <div class="card callout evidence">
-        <div style="font-weight:700; font-size:.85rem; color:var(--status-warn); text-transform:uppercase; letter-spacing:.04em;">
-          Evidence discipline — read this before citing the demo as "proof about BDH"
+      <div class="stack">
+        <div class="callout evidence">
+          <p style="font-weight:700; font-size:.85rem; text-transform:uppercase; letter-spacing:.04em; color:var(--warn); margin-bottom:10px">
+            What is ours and what is theirs
+          </p>
+          <div class="prose" style="font-size:.92rem">
+            <p><strong>From the BDH paper:</strong> the outer-product Hebbian update, the
+            "fast weights" framing, and the ~5% activation sparsity. Those are quoted and
+            cited.</p>
+            <p><strong>Not from the BDH paper:</strong> every curve on this page. Pathway
+            does not publish a recall-against-capacity measurement for BDH's synapse matrix,
+            and we have not run BDH. This is our own toy model of the mechanism, at a scale
+            small enough to check by hand.</p>
+            <p><strong>Independently corroborated:</strong> the interference phenomenon
+            itself. Variational Linear Attention (2026) opens by noting that a linear
+            attention state's norm grows with sequence length, "causing progressive
+            interference between stored associations." Gated DeltaNet-2 (2026) exists to
+            edit that compressed memory "without scrambling existing associations." We are
+            demonstrating a known problem, not discovering one.</p>
+            <p><strong>Where BDH-CQ comes in:</strong> its contextual memory accumulates
+            additively as each demonstration arrives, the same write-don't-replace pattern
+            one level up from tokens. Its headline result (29.5% pass@2 on ARC-AGI-1 at
+            $0.0007 per task, 150M parameters) is reported by its authors and has not been
+            independently reproduced, by us or as far as we know by anyone else.</p>
+          </div>
         </div>
-        <div class="prose" style="margin-top:12px; font-size:.92rem;">
-          <p><strong>What the Dragon Hatchling paper documents:</strong> the exact outer‑product
-          Hebbian update above, the "fast weights" framing, and ~5% activation sparsity.</p>
-          <p><strong>What it does not publish:</strong> a retrieval‑accuracy‑vs‑capacity curve
-          for its own synapse matrix. The collapsing curve you can produce in the sandbox is
-          <em>our</em> toy demonstration of the general outer‑product / fast‑weight
-          mechanism class — deliberately simplified to dense random vectors so the geometry
-          is easy to see and to verify by hand.</p>
-          <p><strong>Where that general phenomenon is independently documented:</strong> Titans
-          (arXiv:2501.00663) motivates its entire memory module around it; Gated DeltaNet‑2
-          (arXiv:2605.22791) and Variational Linear Attention (arXiv:2605.11196) — both from
-          2026 — exist specifically to correct for it. The curve is real math, cross‑checked
-          against the classical linear‑associative‑memory noise estimate
-          <span class="mono">similarity ≈ √(d / (d+n−1))</span>, shown as the dashed line in
-          every chart above. It is not, and is not presented as, a number BDH's authors
-          measured.</p>
+
+        <div class="card">
+          <p style="font-weight:600; margin-bottom:10px">Why the state norm matters, and why our metric hides it</p>
+          <p class="prose" style="font-size:.9rem">Measured at d=32: the Hebbian state's
+          Frobenius norm tracks √n almost exactly (22.51 measured against 22.63 predicted at
+          n=512), while the delta rule saturates near 5.6 and stops growing. That unbounded
+          growth is exactly what Variational Linear Attention targets. Our recall metric is
+          cosine, which is scale-invariant, so it is blind to it by construction. In a real
+          network the growing norm interacts with normalisation layers and finite precision
+          and causes trouble that this page cannot show you. We think that is the most
+          important limitation here, so we measured the norm separately instead of quietly
+          leaving it out.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ============================================================ -->
 <section id="landscape">
   <div class="wrap">
-    <p class="eyebrow">The landscape</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin-top:10px;">Four ways to remember a sequence</h2>
-    <p class="prose" style="margin-top:12px; color:var(--ink-muted); max-width:44rem;">
-      "Fixed‑size memory" is not one design — it's a family with very different answers to
-      "what happens when capacity runs out."
-    </p>
-    <div class="table-wrap" style="margin-top:22px;">
+    <div class="section-head">
+      <p class="eyebrow">Landscape</p>
+      <h2>Four ways to hold a sequence</h2>
+      <p class="prose muted">The first three rows are running on this page. The fourth is
+      here for context and we have not implemented it.</p>
+    </div>
+    <div class="board">
       <table>
         <thead>
-          <tr><th>Mechanism</th><th>Memory footprint</th><th>Exactness</th><th>Interference behavior</th><th>Example system</th></tr>
+          <tr>
+            <th>Mechanism</th><th>Footprint</th><th>Exactness</th>
+            <th>Who keeps the fidelity</th><th>State norm</th><th>Seen in</th>
+          </tr>
         </thead>
         <tbody>
           <tr>
-            <td><strong>Full KV‑cache</strong><br><span class="tag">exact attention</span></td>
-            <td>Grows O(n) — every token kept</td>
+            <td><strong>Full KV cache</strong></td>
+            <td>Grows with every token</td>
             <td>Exact, always</td>
-            <td>None by construction — the cost is paid in memory, not accuracy</td>
+            <td>Everyone, equally, forever</td>
+            <td class="mono">n/a</td>
             <td>Standard Transformer decoding</td>
           </tr>
           <tr>
-            <td><strong>Pure Hebbian fast‑weight</strong><br><span class="tag">this demo</span></td>
-            <td>Constant O(d²)</td>
-            <td>Approximate; degrades smoothly with n/d</td>
-            <td>Order‑independent — old and new associations interfere equally, no forgetting</td>
-            <td>Dragon Hatchling (BDH) synaptic state</td>
+            <td><strong style="color:var(--hebbian)">Hebbian</strong></td>
+            <td class="mono">d² · 8 bytes</td>
+            <td>Approximate</td>
+            <td>Spread evenly over all of history</td>
+            <td class="mono">grows as √n</td>
+            <td>BDH synaptic state</td>
           </tr>
           <tr>
-            <td><strong>Gated / delta‑rule fast‑weight</strong></td>
-            <td>Constant O(d²)</td>
-            <td>Approximate; error‑corrective</td>
-            <td>Explicit erase/forget gate favors recent writes, measurably reduces interference</td>
-            <td>Titans, DeltaNet, Gated DeltaNet‑2</td>
+            <td><strong style="color:var(--delta)">Delta rule</strong></td>
+            <td class="mono">d² · 8 bytes</td>
+            <td>Exact for the newest write</td>
+            <td>Concentrated on recent writes</td>
+            <td class="mono">saturates</td>
+            <td>DeltaNet, Gated DeltaNet-2, Titans' objective</td>
           </tr>
           <tr>
-            <td><strong>Compressed recurrent state</strong><br><span class="tag">mentioned for context</span></td>
-            <td>Constant, size is a design choice</td>
-            <td>Approximate; compression scheme dependent</td>
-            <td>Depends on the specific gating/decay design — a related but structurally distinct update rule (no outer product)</td>
-            <td>Mamba‑family state‑space models</td>
+            <td><strong style="color:var(--decay)">Decay gate</strong></td>
+            <td class="mono">d² · 8 bytes</td>
+            <td>Approximate</td>
+            <td>Recent writes, geometrically</td>
+            <td class="mono">saturates lower</td>
+            <td>Titans' forgetting gate</td>
+          </tr>
+          <tr>
+            <td><strong>Compressed recurrent state</strong> <span class="pill">not implemented</span></td>
+            <td>Fixed by design</td>
+            <td>Approximate</td>
+            <td>Whatever the gating learns</td>
+            <td class="mono">design-dependent</td>
+            <td>Mamba-family state-space models</td>
           </tr>
         </tbody>
       </table>
@@ -452,507 +374,130 @@
   </div>
 </section>
 
-<section>
+<!-- ============================================================ -->
+<section id="limits">
   <div class="wrap">
-    <p class="eyebrow">Common misconceptions</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin-top:10px;">Three ways to misread this demo</h2>
-    <div class="misgrid" style="margin-top:24px;">
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:8px;">"Fixed‑size means infinite capacity."</div>
-        <p class="prose" style="font-size:.92rem; color:var(--ink-muted);">No — it moves the
-        limit. A growing cache is limited by memory bytes. A fast‑weight matrix is limited
-        by interference. Neither escapes a limit; they trade which one you hit first.</p>
+    <div class="section-head">
+      <p class="eyebrow">Limits</p>
+      <h2>Where this page will mislead you</h2>
+    </div>
+    <div class="split">
+      <div class="stack">
+        <div class="card">
+          <p style="font-weight:600">Our cache is a lookup, not attention.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">Real attention softmaxes
+          over all stored keys and has its own failure modes. We index straight into the
+          cache so that the only variable under test is whether the memory grows. That makes
+          the cache look flawless in a way real attention is not.</p>
+        </div>
+        <div class="card">
+          <p style="font-weight:600">Cosine hides the norm problem.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">Scale-invariance is why
+          Hebbian looks good here at high load despite its state norm growing without bound.
+          Measured separately in the section above.</p>
+        </div>
+        <div class="card">
+          <p style="font-weight:600">λ is fixed; Titans learns it.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">Our decay gate uses one
+          constant λ for every write. Titans computes α<sub>t</sub> per step from the input,
+          along with a momentum term we have not implemented at all. Treat our decay row as
+          the idea of forgetting, not as Titans.</p>
+        </div>
       </div>
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:8px;">"BDH's paper proved this exact curve."</div>
-        <p class="prose" style="font-size:.92rem; color:var(--ink-muted);">No — see the
-        evidence‑discipline box above. BDH's paper documents the mechanism; the
-        interference curve is our toy demonstration of that mechanism class, cross‑checked
-        against classical associative‑memory theory and the wider fast‑weight literature.</p>
-      </div>
-      <div class="card">
-        <div style="font-weight:700; margin-bottom:8px;">"KV‑cache eviction solves the memory problem for free."</div>
-        <p class="prose" style="font-size:.92rem; color:var(--ink-muted);">Eviction and
-        compression bound the cache's memory — but every evicted token becomes exactly as
-        unrecoverable as an interfered fast‑weight association. It's a move toward the
-        fast‑weight side of this same trade‑off, not an escape from it.</p>
+      <div class="stack">
+        <div class="card">
+          <p style="font-weight:600">One layer, no training.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">BDH is a full
+          architecture with learned projections feeding these synapses. We hand it random
+          vectors. Learned keys would be spread out deliberately rather than randomly, which
+          should help, and we have not measured by how much.</p>
+        </div>
+        <div class="card">
+          <p style="font-weight:600">The theory curve is first-order.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">√(d/(d+n−1)) assumes the
+          crosstalk terms behave like independent isotropic noise. Good for dense Gaussian
+          keys, visibly worse at small d, and it is not the right model for the sparse
+          non-negative regime at all. The dashed line stays on the chart in sparse mode so
+          you can watch it stop fitting.</p>
+        </div>
+        <div class="card">
+          <p style="font-weight:600">Twenty facts is not a context window.</p>
+          <p class="muted" style="font-size:.9rem; margin-top:6px">We shrank everything
+          until the state fits on a screen. The mechanism is the same at d=16 and d=2048;
+          the numbers are not, and nothing here should be read as a prediction about a
+          production model's context length.</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
+<!-- ============================================================ -->
 <section id="quiz">
   <div class="wrap">
-    <p class="eyebrow">Check yourself</p>
-    <h2 style="font-size:clamp(1.5rem,3vw,2.1rem); margin:10px 0 24px;">Three questions, no scrolling back required</h2>
-    <div class="prose-wrap" style="max-width:640px; padding:0; margin-top:24px;">
-      <div id="quiz-root"></div>
+    <div class="section-head">
+      <p class="eyebrow">Check yourself</p>
+      <h2>Four questions</h2>
+      <p class="prose muted">If these are easy, the page worked. If not, the sandbox above
+      answers all four.</p>
+    </div>
+    <div style="max-width:640px">
+      <div id="quiz"></div>
     </div>
   </div>
 </section>
 
+<!-- ============================================================ -->
 <footer id="sources">
   <div class="wrap">
     <p class="eyebrow">Primary sources</p>
-    <div class="src-list" style="margin-top:16px; max-width:56rem;">
-      <div><span class="k">[1]</span> Pathway. <em>The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain.</em> arXiv:2509.26507 (Sept 2025). — outer‑product Hebbian update, "fast weights" framing, ~5% activation sparsity.</div>
-      <div><span class="k">[2]</span> Pathway Research. <em>BDH‑CQ: In‑Context Learning with Recurrent Latent Reasoning.</em> arXiv:2608.09888 (Aug 2026). — additive contextual memory accumulation; 29.5% pass@2 on ARC‑AGI‑1 at $0.0007/task.</div>
-      <div><span class="k">[3]</span> Behrouz, Zhong et al. (Google Research). <em>Titans: Learning to Memorize at Test Time.</em> arXiv:2501.00663 (Jan 2025). — fast‑weight associative memory updated live at test time with explicit forgetting via weight decay.</div>
-      <div><span class="k">[4]</span> <em>Gated DeltaNet‑2: Decoupling Erase and Write in Linear Attention.</em> arXiv:2605.22791 (2026). — error‑corrective delta‑rule update explicitly built to reduce associative interference under multi‑key recall.</div>
-      <div><span class="k">[5]</span> <em>Variational Linear Attention: Stable Associative Memory for Long‑Context Transformers.</em> arXiv:2605.11196 (2026). — current research addressing the same interference problem this demo reproduces.</div>
+    <div class="sources" style="margin-top:14px">
+      <div><span class="ref">[1]</span> Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz.
+        <em>The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain.</em>
+        <a href="https://arxiv.org/abs/2509.26507">arXiv:2509.26507</a>, September 2025.
+        Source for the σ(i,j) += Y(i)X(j) update (§1.2), the "fast weights" framing, and ~5% activation sparsity (§6.4).</div>
+      <div><span class="ref">[2]</span> Engdahl, Kosowski, Chorowski, Stamirowska, Uznański, Jiang, Phadke, Kinas, Zhong.
+        <em>BDH-CQ: In-Context Learning with Recurrent Latent Reasoning.</em>
+        <a href="https://arxiv.org/abs/2608.09888">arXiv:2608.09888</a>, August 2026.
+        Additive contextual memory; 29.5% pass@2 on ARC-AGI-1 at $0.0007 per task with 150M parameters.</div>
+      <div><span class="ref">[3]</span> Behrouz, Zhong, Mirrokni.
+        <em>Titans: Learning to Memorize at Test Time.</em>
+        <a href="https://arxiv.org/abs/2501.00663">arXiv:2501.00663</a>, December 2024.
+        Memory loss ‖M(k)−v‖² (eq. 11–12) and the forgetting gate M<sub>t</sub> = (1−α<sub>t</sub>)M<sub>t−1</sub> + S<sub>t</sub> (eq. 13).</div>
+      <div><span class="ref">[4]</span> Hatamizadeh, Choi, Kautz.
+        <em>Gated DeltaNet-2: Decoupling Erase and Write in Linear Attention.</em>
+        <a href="https://arxiv.org/abs/2605.22791">arXiv:2605.22791</a>, May 2026.
+        "Delta-rule models subtract the current read before writing a new value"; separate erase and write gates.</div>
+      <div><span class="ref">[5]</span> Pandey, Singh.
+        <em>Variational Linear Attention: Stable Associative Memory for Long-Context Transformers.</em>
+        <a href="https://arxiv.org/abs/2605.11196">arXiv:2605.11196</a>, May 2026.
+        State norm growing as O(T) "causing progressive interference between stored associations."</div>
+      <div><span class="ref">[6]</span> Pathway. <em>BDH reference implementation.</em>
+        <a href="https://github.com/pathwaycom/bdh">github.com/pathwaycom/bdh</a>, MIT licensed.
+        Its README notes the published Sudoku Extreme result came from an internal implementation and is not reproduced by the open repository.</div>
     </div>
-    <p class="footnote">
-      Built for the DataForge × Pathway "Explain the Frontier" track (IIT Kharagpur).
-      Every chart on this page is computed live in your browser from a seeded random
-      number generator — nothing is a precomputed lookup table or a scripted animation;
-      re‑running any control re‑derives the numbers from scratch. Claude Code (Sonnet 5)
-      assisted with implementation, layout code, and locating the primary sources above;
-      the team fetched and verified each citation against the original paper before
-      writing this page, tuned the demo's default parameters against a standalone
-      verification script, and can defend every component live. Full disclosure and
-      reproduction steps are in the repository README. Code © the team, MIT License.
-    </p>
+
+    <div class="colophon">
+      <p><strong>Run it yourself.</strong> <span class="mono">git clone</span> the repository, then
+      <span class="mono">npm start</span> serves the page at <span class="mono">localhost:4173</span>,
+      <span class="mono">npm test</span> runs 33 assertions over the memory maths, and
+      <span class="mono">npm run experiments</span> regenerates every number quoted above.
+      No build step and no dependencies.</p>
+      <p><strong>What is live.</strong> Every chart, table and score on this page is computed
+      in your browser from a seeded generator when the page loads and again whenever you move
+      a control. The only pre-computed figures are the four-row sparsity table and the state-norm
+      numbers in the BDH section, both labelled where they appear and both reproducible with
+      <span class="mono">npm run experiments</span>.</p>
+      <p><strong>Tools and attribution.</strong> Built by our team for DataForge 2026 at IIT
+      Kharagpur. We used Claude Code as a coding and drafting assistant throughout, and we
+      checked every equation, quotation and figure against the primary papers ourselves before
+      it went on the page. The full disclosure, including the two mistakes the assistant made
+      that our tests caught, is in the repository README and build log. Code is MIT licensed.
+      The roster is invented; no real allotment data is used.</p>
+    </div>
   </div>
 </footer>
 
-<script>
-(function(){
-  "use strict";
-
-  /* ---------- math core (mirrors the standalone Node verification script) ---------- */
-  function seededRng(seed){
-    let s = seed >>> 0;
-    return function(){ s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; };
-  }
-  function randUnitVec(d, rng){
-    const v = new Array(d); let norm = 0;
-    for (let i=0;i<d;i++){
-      const u1 = Math.max(rng(), 1e-12), u2 = rng();
-      const z = Math.sqrt(-2*Math.log(u1)) * Math.cos(2*Math.PI*u2);
-      v[i]=z; norm += z*z;
-    }
-    norm = Math.sqrt(norm);
-    for (let i=0;i<d;i++) v[i] /= norm;
-    return v;
-  }
-  function dot(a,b){ let s=0; for(let i=0;i<a.length;i++) s+=a[i]*b[i]; return s; }
-  function cosineSim(a,b){
-    const na=Math.sqrt(dot(a,a)), nb=Math.sqrt(dot(b,b));
-    if (na<1e-9 || nb<1e-9) return 0;
-    return dot(a,b)/(na*nb);
-  }
-  function theoreticalSim(n,d){ return Math.sqrt(d/(d+Math.max(n-1,0))); }
-  // Average retrieval similarity across every stored item -- the robust, low-noise
-  // headline metric (a single query is one noisy draw; this is the full evaluation pass
-  // the dashed theoretical curve is actually estimating).
-  function averageSim(run){
-    let s = 0;
-    for (let i=0;i<run.n;i++) s += cosineSim(readFW(run.S, run.d, run.keys[i]), run.vals[i]);
-    return s / run.n;
-  }
-
-  // Runs the shared stream through both memories from t=1..n. Returns full trajectory.
-  function computeRun(d, n, seed){
-    const rng = seededRng(seed);
-    const S = new Float64Array(d*d);
-    const keys=[], vals=[], series=[];
-    for (let t=1;t<=n;t++){
-      const k = randUnitVec(d, rng), v = randUnitVec(d, rng);
-      for (let i=0;i<d;i++){ const ki=k[i]; if(ki){ const base=i*d; for(let j=0;j<d;j++) S[base+j]+=ki*v[j]; } }
-      keys.push(k); vals.push(v);
-      const qIdx = Math.floor(rng()*t);
-      const qKey = keys[qIdx], qTrue = vals[qIdx];
-      const est = readFW(S,d,qKey);
-      series.push({ n:t, fwSim: cosineSim(est,qTrue), theorySim: theoreticalSim(t,d),
-                    fwBytes: d*d*4, cacheBytes: t*d*2*4 });
-    }
-    return { S, keys, vals, series, d, n, seed };
-  }
-  function readFW(S,d,k){
-    const out = new Array(d).fill(0);
-    for (let i=0;i<d;i++){ const ki=k[i]; if(ki){ const base=i*d; for(let j=0;j<d;j++) out[j]+=ki*S[base+j]; } }
-    return out;
-  }
-  function appendCollision(run, targetIdx, epsilon){
-    const { S, keys, vals, d, seed, n } = run;
-    const rng = seededRng(seed * 7919 + n + targetIdx); // independent stream, deterministic per state
-    const base = keys[targetIdx];
-    const noise = randUnitVec(d, rng);
-    let kdup = base.map((x,i)=> x + epsilon*noise[i]);
-    const norm = Math.sqrt(dot(kdup,kdup));
-    kdup = kdup.map(x=>x/norm);
-    const vdup = randUnitVec(d, rng);
-    for (let i=0;i<d;i++){ const ki=kdup[i]; if(ki){ const b=i*d; for(let j=0;j<d;j++) S[b+j]+=ki*vdup[j]; } }
-    keys.push(kdup); vals.push(vdup);
-    run.n = keys.length;
-    run.series.push({ n:run.n, fwSim: cosineSim(readFW(S,d,base), vals[targetIdx]), theorySim: theoreticalSim(run.n,d),
-                       fwBytes: d*d*4, cacheBytes: run.n*d*2*4 });
-    return kdup;
-  }
-
-  /* ---------- tiny colour helpers ---------- */
-  function hexToRgb(hex){ const n=parseInt(hex.slice(1),16); return [(n>>16)&255,(n>>8)&255,n&255]; }
-  function rgbToCss(rgb){ return `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`; }
-  function lerp(a,b,t){ return a+(b-a)*t; }
-  function lerpColor(c1,c2,t){
-    const a=hexToRgb(c1), b=hexToRgb(c2);
-    return rgbToCss([lerp(a[0],b[0],t), lerp(a[1],b[1],t), lerp(a[2],b[2],t)]);
-  }
-  function cssVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
-  function divergingColor(t, neg, mid, pos){ // t in [-1,1]; pass precomputed hex stops for speed
-    const c = Math.max(-1, Math.min(1, t));
-    return c >= 0 ? lerpColor(mid, pos, c) : lerpColor(mid, neg, -c);
-  }
-
-  /* ---------- SVG helpers ---------- */
-  const SVGNS = "http://www.w3.org/2000/svg";
-  function el(tag, attrs){
-    const e = document.createElementNS(SVGNS, tag);
-    for (const k in attrs) e.setAttribute(k, attrs[k]);
-    return e;
-  }
-
-  function renderHeatmap(container, S, d){
-    container.innerHTML = "";
-    const size = 240, pad = 2;
-    const svg = el("svg", { viewBox:`0 0 ${size} ${size}`, style:"width:100%; max-width:240px; display:block; margin:0 auto;" });
-    let maxAbs = 1e-9;
-    for (let i=0;i<S.length;i++) maxAbs = Math.max(maxAbs, Math.abs(S[i]));
-    const cell = (size - pad*2) / d;
-    const negC = cssVar('--div-neg'), midC = cssVar('--div-mid'), posC = cssVar('--div-pos');
-    for (let i=0;i<d;i++){
-      for (let j=0;j<d;j++){
-        const v = S[i*d+j] / maxAbs;
-        const r = el("rect", {
-          x: pad + j*cell, y: pad + i*cell, width: Math.max(cell-0.6,0), height: Math.max(cell-0.6,0),
-          fill: divergingColor(v, negC, midC, posC), rx: 1
-        });
-        svg.appendChild(r);
-      }
-    }
-    container.appendChild(svg);
-  }
-
-  function renderVectorBars(container, rows){
-    // rows: [{label, color, values:[...]}]
-    container.innerHTML = "";
-    const d = rows[0].values.length;
-    const w = 300, rowH = 46, gap = 10, padL = 4, padR = 4;
-    const svg = el("svg", { viewBox:`0 0 ${w} ${rows.length*(rowH+gap)}`, style:"width:100%; display:block;" });
-    let maxAbs = 1e-9;
-    rows.forEach(r=> r.values.forEach(v=> maxAbs = Math.max(maxAbs, Math.abs(v))));
-    const barW = (w - padL - padR) / d;
-    rows.forEach((r, ri)=>{
-      const yBase = ri*(rowH+gap) + rowH/2;
-      svg.appendChild(el("line", { x1:padL, x2:w-padR, y1:yBase, y2:yBase, stroke:"var(--border)", "stroke-width":1 }));
-      r.values.forEach((v,i)=>{
-        const h = (Math.abs(v)/maxAbs) * (rowH/2 - 3);
-        const x = padL + i*barW;
-        const y = v>=0 ? yBase - h : yBase;
-        svg.appendChild(el("rect", { x: x+0.5, y, width: Math.max(barW-1,0.5), height:Math.max(h,0.6), fill:r.color, rx:1 }));
-      });
-      const label = el("text", { x: 2, y: ri*(rowH+gap) + 11, "font-size":"9px", "font-weight":"700" });
-      label.textContent = r.label;
-      svg.appendChild(label);
-    });
-    container.appendChild(svg);
-  }
-
-  function renderLineChart(container, series, opts){
-    // series: [{name, color, dashed, points:[{x,y}]}]
-    container.innerHTML = "";
-    const wrap = document.createElement("div"); wrap.className = "chart-wrap";
-    const W = 460, H = 190, ML = 38, MR = 14, MT = 14, MB = 26;
-    const svg = el("svg", { viewBox:`0 0 ${W} ${H}`, style:"width:100%; display:block;" });
-    const xMax = opts.xMax, yMax = opts.yMax || 1, yMin = opts.yMin || 0;
-    const xs = x => ML + (x/xMax) * (W-ML-MR);
-    const ys = y => (H-MB) - ((y-yMin)/(yMax-yMin)) * (H-MB-MT);
-
-    // gridlines + y ticks
-    const ticks = opts.yTicks || [0, 0.25, 0.5, 0.75, 1].map(t=>yMin+t*(yMax-yMin));
-    ticks.forEach(t=>{
-      svg.appendChild(el("line", { x1:ML, x2:W-MR, y1:ys(t), y2:ys(t), stroke:"var(--border)", "stroke-width":1 }));
-      const tx = el("text", { x:ML-6, y:ys(t)+3, "font-size":"9px", "text-anchor":"end" });
-      tx.textContent = opts.yFmt ? opts.yFmt(t) : t;
-      svg.appendChild(tx);
-    });
-    // x ticks
-    const xticks = opts.xTicks || [0, Math.round(xMax*0.25), Math.round(xMax*0.5), Math.round(xMax*0.75), xMax];
-    xticks.forEach(t=>{
-      const tx = el("text", { x:xs(t), y:H-6, "font-size":"9px", "text-anchor":"middle" });
-      tx.textContent = t;
-      svg.appendChild(tx);
-    });
-    const xlab = el("text", { x:(ML+W-MR)/2, y:H-1, "font-size":"9px", "text-anchor":"middle", fill:"var(--ink-faint)" });
-    xlab.textContent = opts.xLabel || "";
-    svg.appendChild(xlab);
-
-    series.forEach(s=>{
-      if (!s.points.length) return;
-      const d0 = s.points.map((p,i)=> (i===0?"M":"L") + xs(p.x).toFixed(2) + " " + ys(p.y).toFixed(2)).join(" ");
-      const path = el("path", { d:d0, fill:"none", stroke:s.color, "stroke-width":2 });
-      if (s.dashed) path.setAttribute("stroke-dasharray","4,3");
-      svg.appendChild(path);
-      const last = s.points[s.points.length-1];
-      svg.appendChild(el("circle", { cx:xs(last.x), cy:ys(last.y), r:2.6, fill:s.color }));
-    });
-
-    // hover crosshair
-    const hitRect = el("rect", { x:ML, y:MT, width:W-ML-MR, height:H-MT-MB, fill:"transparent" });
-    const cross = el("line", { x1:0, x2:0, y1:MT, y2:H-MB, stroke:"var(--ink-faint)", "stroke-width":1, opacity:0 });
-    svg.appendChild(cross); svg.appendChild(hitRect);
-    const tip = document.createElement("div"); tip.className = "tooltip";
-    wrap.appendChild(svg); wrap.appendChild(tip);
-
-    hitRect.addEventListener("mousemove", (e)=>{
-      const rect = svg.getBoundingClientRect();
-      const px = (e.clientX-rect.left) * (W/rect.width);
-      const xVal = Math.round(((px-ML)/(W-ML-MR)) * xMax);
-      const cx = xs(Math.max(0,Math.min(xMax,xVal)));
-      cross.setAttribute("x1",cx); cross.setAttribute("x2",cx); cross.setAttribute("opacity","1");
-      let lines = [`n = ${xVal}`];
-      series.forEach(s=>{
-        const p = s.points.find(pt=>pt.x===xVal) || s.points[s.points.length-1];
-        if (p) lines.push(`${s.name}: ${(opts.yFmt?opts.yFmt(p.y):p.y.toFixed(2))}`);
-      });
-      tip.innerHTML = lines.join("<br>");
-      tip.style.left = (cx/W*100) + "%";
-      tip.style.top = "10px";
-      tip.style.opacity = "1";
-    });
-    hitRect.addEventListener("mouseleave", ()=>{ cross.setAttribute("opacity","0"); tip.style.opacity="0"; });
-
-    container.appendChild(wrap);
-  }
-
-  /* ---------- the reusable demo component ---------- */
-  function createMemoryDemo(anchor, opts){
-    const root = document.createElement("div");
-    root.className = "demo";
-    anchor.replaceWith(root);
-
-    let state = { d: opts.d, n: opts.n, seed: opts.seed, queryIdx: Math.max(0, opts.n-1) };
-
-    const gridWrap = document.createElement("div"); gridWrap.className = "demo-grid";
-    root.appendChild(gridWrap);
-
-    const ctlCol = document.createElement("div"); ctlCol.className = "controls";
-    const mainCol = document.createElement("div");
-    gridWrap.appendChild(ctlCol); gridWrap.appendChild(mainCol);
-
-    if (!opts.locked){
-      ctlCol.innerHTML = `
-        <div class="ctl">
-          <label>Dimension d <span class="val tnum" id="${opts.id}-dval">${state.d}</span></label>
-          <input type="range" min="4" max="64" step="1" value="${state.d}" id="${opts.id}-d" aria-label="Memory dimension d">
-        </div>
-        <div class="ctl">
-          <label>Associations stored n <span class="val tnum" id="${opts.id}-nval">${state.n}</span></label>
-          <input type="range" min="1" max="300" step="1" value="${state.n}" id="${opts.id}-n" aria-label="Number of stored associations n">
-        </div>
-        <div class="ctl">
-          <label>Query which item?</label>
-          <select id="${opts.id}-q" aria-label="Which stored item to query"></select>
-        </div>
-        <div class="btn-row">
-          <button class="btn primary" id="${opts.id}-collide">Force a collision</button>
-          <button class="btn" id="${opts.id}-reseed">Reseed</button>
-        </div>
-        <div class="legend" style="margin-top:4px;">
-          <span class="legend-item"><span class="swatch cache"></span>Cache (exact)</span>
-          <span class="legend-item"><span class="swatch fw"></span>Fast‑weight</span>
-          <span class="legend-item"><span class="swatch theory"></span>Theory √(d/(d+n−1))</span>
-        </div>
-      `;
-    } else {
-      ctlCol.innerHTML = `
-        <div class="card" style="padding:14px; background:var(--surface-alt); border:none;">
-          <div class="tnum" style="font-family:'IBM Plex Mono',monospace; font-size:.85rem; line-height:1.9;">
-            d = ${state.d}<br>n = ${state.n}<br>seed = ${state.seed}
-          </div>
-        </div>
-        <div class="legend">
-          <span class="legend-item"><span class="swatch cache"></span>Cache (exact)</span>
-          <span class="legend-item"><span class="swatch fw"></span>Fast‑weight</span>
-          <span class="legend-item"><span class="swatch theory"></span>Theory √(d/(d+n−1))</span>
-        </div>
-      `;
-    }
-
-    mainCol.innerHTML = `
-      <div class="demo-panels">
-        <div>
-          <div class="panel-title">Synaptic matrix S (d×d) — fixed size</div>
-          <div id="${opts.id}-heat"></div>
-        </div>
-        <div>
-          <div class="panel-title">Truth beside estimate</div>
-          <div id="${opts.id}-vec"></div>
-          <div class="readout" id="${opts.id}-readout" style="margin-top:10px;"></div>
-        </div>
-      </div>
-      <div class="demo-panels" style="margin-top:20px;">
-        <div>
-          <div class="panel-title">Memory footprint vs. n</div>
-          <div id="${opts.id}-chart-bytes"></div>
-        </div>
-        <div>
-          <div class="panel-title">Retrieval similarity vs. n</div>
-          <div id="${opts.id}-chart-sim"></div>
-        </div>
-      </div>
-    `;
-
-    let run = computeRun(state.d, state.n, state.seed);
-
-    function fillQuerySelect(){
-      if (opts.locked) return;
-      const sel = document.getElementById(`${opts.id}-q`);
-      const prev = state.queryIdx;
-      sel.innerHTML = "";
-      for (let i=0;i<run.n;i++){
-        const o = document.createElement("option");
-        o.value = i; o.textContent = `Item #${i+1}` + (i===run.n-1 ? " (most recent)" : "");
-        sel.appendChild(o);
-      }
-      state.queryIdx = Math.min(prev, run.n-1);
-      sel.value = state.queryIdx;
-    }
-
-    function render(){
-      renderHeatmap(document.getElementById(`${opts.id}-heat`), run.S, run.d);
-
-      const qi = state.queryIdx;
-      const trueVal = run.vals[qi];
-      const cacheVal = run.vals[qi]; // cache is an exact index lookup, by construction
-      const fwVal = readFW(run.S, run.d, run.keys[qi]);
-      const itemSim = cosineSim(fwVal, trueVal);
-      const avgSim = averageSim(run); // robust headline: averaged over all n stored items, not one noisy draw
-
-      renderVectorBars(document.getElementById(`${opts.id}-vec`), [
-        { label:"TRUE VALUE", color: cssVar('--ink-faint'), values: trueVal },
-        { label:"CACHE READS", color: cssVar('--accent-cache'), values: cacheVal },
-        { label:"FAST-WEIGHT READS", color: cssVar('--accent-fw'), values: fwVal },
-      ]);
-
-      const badge = avgSim>0.85 ? ['b-good','reliable'] : avgSim>0.5 ? ['b-warn','degraded'] : ['b-crit','~noise'];
-      document.getElementById(`${opts.id}-readout`).innerHTML = `
-        <div class="readout-row"><span class="rlabel">Cache</span><span></span>
-          <span class="badge b-good">exact</span></div>
-        <div class="readout-row"><span class="rlabel">Fast‑weight</span>
-          <span class="tnum" style="font-family:'IBM Plex Mono',monospace; font-size:.8rem; color:var(--ink-muted);">avg. sim across all ${run.n} items: ${avgSim.toFixed(3)}</span>
-          <span class="badge ${badge[0]}">${badge[1]}</span></div>
-        <div style="font-size:.74rem; color:var(--ink-faint); padding-left:74px;">
-          this one item shown above: cosine sim ${itemSim.toFixed(3)}
-        </div>
-      `;
-
-      const bytesSeries = [
-        { name:"Cache", color: cssVar('--accent-cache'), points: run.series.map(s=>({x:s.n,y:s.cacheBytes})) },
-        { name:"Fast-weight", color: cssVar('--accent-fw'), points: run.series.map(s=>({x:s.n,y:s.fwBytes})) },
-      ];
-      const maxBytes = Math.max(...run.series.map(s=>s.cacheBytes), run.series[0].fwBytes) * 1.08;
-      renderLineChart(document.getElementById(`${opts.id}-chart-bytes`), bytesSeries, {
-        xMax: run.n, yMax: maxBytes, xLabel:"n (associations stored)",
-        yFmt: v => v>1024 ? (v/1024).toFixed(1)+"KB" : Math.round(v)+"B"
-      });
-
-      const simSeries = [
-        { name:"Cache", color: cssVar('--accent-cache'), points: run.series.map(s=>({x:s.n,y:1})) },
-        { name:"Fast-weight", color: cssVar('--accent-fw'), points: run.series.map(s=>({x:s.n,y:s.fwSim})) },
-        { name:"Theory", color: cssVar('--accent-fw'), dashed:true, points: run.series.map(s=>({x:s.n,y:s.theorySim})) },
-      ];
-      renderLineChart(document.getElementById(`${opts.id}-chart-sim`), simSeries, {
-        xMax: run.n, yMax: 1.05, yMin:0, xLabel:"n (associations stored)",
-        yFmt: v => v.toFixed(2)
-      });
-    }
-
-    fillQuerySelect();
-    render();
-
-    if (!opts.locked){
-      const dEl = document.getElementById(`${opts.id}-d`);
-      const nEl = document.getElementById(`${opts.id}-n`);
-      const qEl = document.getElementById(`${opts.id}-q`);
-      dEl.addEventListener("input", ()=>{
-        state.d = +dEl.value;
-        document.getElementById(`${opts.id}-dval`).textContent = state.d;
-        run = computeRun(state.d, state.n, state.seed);
-        fillQuerySelect(); render();
-      });
-      nEl.addEventListener("input", ()=>{
-        state.n = +nEl.value;
-        document.getElementById(`${opts.id}-nval`).textContent = state.n;
-        run = computeRun(state.d, state.n, state.seed);
-        fillQuerySelect(); render();
-      });
-      qEl.addEventListener("change", ()=>{ state.queryIdx = +qEl.value; render(); });
-      document.getElementById(`${opts.id}-reseed`).addEventListener("click", ()=>{
-        state.seed = Math.floor(Math.random()*1e6);
-        run = computeRun(state.d, state.n, state.seed);
-        fillQuerySelect(); render();
-      });
-      document.getElementById(`${opts.id}-collide`).addEventListener("click", ()=>{
-        appendCollision(run, state.queryIdx, 0.35);
-        nEl.max = Math.max(+nEl.max, run.n);
-        nEl.value = run.n; state.n = run.n;
-        document.getElementById(`${opts.id}-nval`).textContent = state.n;
-        fillQuerySelect(); state.queryIdx = run.n - 2 >= 0 ? state.queryIdx : 0;
-        render();
-      });
-    }
-    return { render, get run(){ return run; } };
-  }
-
-  /* ---------- instantiate demos ---------- */
-  createMemoryDemo(document.getElementById("hero-demo"), { id:"hero", d:16, n:16, seed:1, locked:true });
-  document.querySelectorAll("#step-1 .demo-anchor").forEach(a=>createMemoryDemo(a, { id:"s1", d:16, n:4, seed:7, locked:true }));
-  document.querySelectorAll("#step-2 .demo-anchor").forEach(a=>createMemoryDemo(a, { id:"s2", d:16, n:16, seed:7, locked:true }));
-  document.querySelectorAll("#step-3 .demo-anchor").forEach(a=>createMemoryDemo(a, { id:"s3", d:16, n:64, seed:7, locked:true }));
-  createMemoryDemo(document.getElementById("sandbox-demo"), { id:"sbx", d:16, n:24, seed:42, locked:false });
-
-  /* ---------- quiz ---------- */
-  const QUIZ = [
-    {
-      q: "You double the dimension d while keeping n fixed. What happens to the fast-weight memory's retrieval similarity?",
-      opts: ["It improves", "It gets worse", "No change"],
-      correct: 0,
-      why: "Interference scales like (n−1)/d, so doubling d roughly halves the crosstalk noise the query has to fight through."
-    },
-    {
-      q: "Which mechanism's memory footprint grows with the number of stored associations?",
-      opts: ["The cache", "The fast-weight matrix", "Both, equally"],
-      correct: 0,
-      why: "The cache stores every pair explicitly (O(n)); the fast-weight matrix is a fixed d×d accumulator (O(d²)) no matter how many writes it absorbs."
-    },
-    {
-      q: "BDH's σ(i,j) += Y(i)X(j) update rule is, mathematically, the same operation as:",
-      opts: ["An outer-product / Hebbian / fast-weight write — all three names for one operation", "A training-time-only weight update", "A softmax over all past tokens"],
-      correct: 0,
-      why: "Outer-product update, Hebbian rule, and fast-weight write are three names the literature uses for the identical S += k·vᵀ operation — and it runs during inference, not training."
-    }
-  ];
-  const quizRoot = document.getElementById("quiz-root");
-  QUIZ.forEach((item, qi)=>{
-    const wrap = document.createElement("div"); wrap.className = "quiz-q";
-    wrap.innerHTML = `<div style="font-weight:700;">${qi+1}. ${item.q}</div>
-      <div class="quiz-opts"></div><div class="quiz-feedback" hidden></div>`;
-    const optsWrap = wrap.querySelector(".quiz-opts");
-    const fb = wrap.querySelector(".quiz-feedback");
-    item.opts.forEach((label, oi)=>{
-      const b = document.createElement("button");
-      b.className = "quiz-opt"; b.textContent = label;
-      b.addEventListener("click", ()=>{
-        [...optsWrap.children].forEach(c=>c.disabled = true);
-        b.classList.add(oi===item.correct ? "correct" : "wrong");
-        if (oi!==item.correct) optsWrap.children[item.correct].classList.add("correct");
-        fb.hidden = false;
-        fb.textContent = (oi===item.correct ? "Correct. " : "Not quite. ") + item.why;
-      });
-      optsWrap.appendChild(b);
-    });
-    quizRoot.appendChild(wrap);
-  });
-})();
-</script>
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
