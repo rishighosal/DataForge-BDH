@@ -2,9 +2,11 @@
 
 An interactive explainer for the **DataForge 2026 Pathway track** ("Explain the Frontier").
 
-**Live page:** https://rishighosal.github.io/fast-weights-fixed-memory/
-**Mirror:** https://claude.ai/code/artifact/394c8c5a-8fe6-4a60-a136-c9ba087ad747
+**Live page:** https://rishighosal.github.io/DataForge-BDH/ — opens without sign-in, no build step
+*(GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`)*
+**Source:** https://github.com/rishighosal/DataForge-BDH
 **One-page concept summary:** [`docs/one-pager.pdf`](docs/one-pager.pdf)
+**Offline copy:** `dist/index.html` opens straight off disk with no server.
 
 ![The roster board: a 16x16 matrix asked where twenty students live, getting two wrong](docs/screenshot.png)
 
@@ -15,7 +17,7 @@ there the page works out why, what three different published architectures do ab
 which of them is actually better (the answer is "at what?").
 
 ```
-git clone <this repo> && cd fast-weights-fixed-memory
+git clone https://github.com/rishighosal/DataForge-BDH.git && cd DataForge-BDH
 npm start          # http://localhost:4173 — no install step, there are no dependencies
 npm test           # 37 assertions over the memory maths
 npm run experiments  # regenerates every number quoted in the docs
@@ -168,13 +170,17 @@ quietly lying:
 `npm run experiments` prints all eight tables and writes `results/experiments.json`. Forty
 seeds per cell. The headline results:
 
-- **Recall against load** (`d=32`): Hebbian tracks `√(d/(d+n−1))` to three decimals.
+- **Recall against load** (`d=32`): Hebbian tracks `√(d/(d+n−1))` to within 0.007 across the
+  whole sweep, and to three decimals at high load (n=128, 192). The gap is widest around
+  n=16, where the first-order approximation is weakest.
 - **The surprise**: averaged over everything stored, the delta rule beats Hebbian by 0.024 at
   n=8 and loses by 0.208 at n=256.
-- **Why**: split by age, Hebbian varies 0.022 from oldest to newest; delta varies 0.767.
+- **Why**: split by age, Hebbian spans 0.021 between its best and worst age bucket at n=128;
+  delta spans 0.767.
 - **Sparsity**: at BDH's ~5% activation the sparse and dense regimes agree within noise,
   because 3-of-64 keys overlap only 14% of the time.
-- **State norm**: Hebbian's is √n to within 0.5% at n=512; delta's saturates near 5.6.
+- **State norm**: Hebbian's is √n to within 0.6% at n=512 (22.51 measured, 22.63 predicted);
+  delta's saturates near 5.6.
 - **Accumulation is not only damage**: sixteen noisy demonstrations of one rule lift recall
   from 0.232 to 0.804 in a state that never grows, and conflicting demonstrations return a
   vote that lands on the closed form `a/√(a²+b²)` to within 0.003.

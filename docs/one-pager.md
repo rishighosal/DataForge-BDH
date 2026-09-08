@@ -8,11 +8,11 @@ state**. The operation is the same in every architecture that tries it: an outer
 write, `S ← S + k vᵀ`, read back as `v̂ = kᵀS`. The literature calls the result a fast
 weight, a linear-attention state, or, in Pathway's Dragon Hatchling (BDH), a synapse.
 
-The cost is derivable rather than empirical. Expanding the readout at a stored key gives
+The cost is derivable, not empirical. Expanding the readout at a stored key gives
 `v̂ = v_t + Σ_{p≠t} (k_t·k_p) v_p`: the value you stored, plus one crosstalk term per other
 association. For random unit keys that noise has expected squared norm `(n−1)/d`, putting
-the expected cosine at about `√(d/(d+n−1))`. Simulation matches to three decimals at
-`d=32` across two orders of magnitude in `n`.
+the expected cosine at about `√(d/(d+n−1))`. At `d=32`, 40-seed simulation tracks that curve
+to within 0.007 across two orders of magnitude in `n`, and to three decimals at high load.
 
 ## What we expected, and what we measured
 
@@ -32,9 +32,9 @@ association at `d=32`, it does not:
 | 4.0 | **0.449** | 0.241 | 0.125 |
 
 Splitting recall by *when* each association was written explains it. At `n=128` Hebbian
-scores 0.454 on the oldest and 0.448 on the newest, a spread of 0.022; it is exactly
-order-independent, because `S` is a plain sum. The delta rule scores 0.031 and 0.798.
-Subtracting the current read is an erase, and older content is what gets erased.
+spans 0.021 across eight age buckets (0.454 oldest, 0.448 newest); it is exactly
+order-independent, because `S` is a plain sum. The delta rule scores 0.031 and 0.798:
+subtracting the current read is an erase, and older content is what gets erased.
 
 The three rules are not better and worse versions of each other. They hold an identical
 state and differ in **how they allocate a fixed amount of fidelity**.
@@ -100,4 +100,5 @@ Variational Linear Attention (arXiv:2605.11196) targets when it notes a growing 
 causes "progressive interference between stored associations". A fair head-to-head needs a
 metric we do not have.
 
-*Interactive version, source and full experiment tables: see the repository README.*
+*Explainer: rishighosal.github.io/DataForge-BDH · source, tests, experiment tables:
+github.com/rishighosal/DataForge-BDH*

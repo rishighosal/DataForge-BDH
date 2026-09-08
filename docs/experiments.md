@@ -156,7 +156,8 @@ rooms are random and mostly further away.
 | 97–112 | 0.443 | 0.475 | 0.226 |
 | 113–128 (newest) | 0.448 | 0.798 | 0.738 |
 
-Hebbian varies by 0.022 across the whole span. That is not approximately
+Hebbian's eight buckets span 0.021 from best to worst (0.022 if you subtract
+the rounded values above). That is not approximately
 order-independent, it is exactly order-independent: `S` is a plain sum, so
 permuting the writes produces an identical matrix, and `test/memory.test.js`
 asserts that to 1e-9.
@@ -181,7 +182,7 @@ flatters even distribution.
 | 128 | 11.292 | 11.314 | 5.615 | 2.297 |
 | 512 | 22.505 | 22.627 | 5.647 | 2.298 |
 
-Hebbian's norm is √n to within 0.5%, because independent outer products add
+Hebbian's norm is √n to within 0.6% (0.54% at n=512), because independent outer products add
 incoherently. Delta and decay both saturate.
 
 This is the limitation that matters most for reading experiment 1 correctly.
