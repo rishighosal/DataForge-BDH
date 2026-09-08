@@ -205,3 +205,65 @@ learned keys would accumulate more coherently than independent random ones.
   delta rule on the task it was designed for.
 - Sweep β for the delta rule. We only ever ran β = 1, the full-correction case, and
   the interesting behaviour is probably in between.
+
+---
+
+## 8. Accumulation as evidence rather than as damage
+
+Everything above treats piling associations into one matrix as the thing that goes
+wrong. It is also the thing that makes learning from demonstrations work, which is
+the property BDH-CQ's contextual memory relies on. Same arithmetic, opposite framing.
+
+A rule is one key-value association. A demonstration is a noisy observation of it:
+same key, value perturbed and renormalised. The state also holds 24 unrelated
+associations throughout, so this is not a memory with nothing else in it. `d = 32`.
+
+| demonstrations | clean | noisy, σ=0.5 |
+|---|---|---|
+| 1 | 0.745 | 0.232 |
+| 2 | 0.913 | 0.412 |
+| 4 | 0.976 | 0.554 |
+| 8 | 0.994 | 0.680 |
+| 16 | 0.998 | 0.804 |
+
+One noisy demonstration is close to useless at 0.232. Sixteen of them reach 0.804,
+in a state that never changed size. The signal is identical on every write so it
+adds coherently; the noise is different on every write so it partly cancels. No
+training, no gradient, and nothing was ever shown the underlying rule.
+
+This is why the budget framing survives the good news. Ten writes of *one*
+association cost roughly what one write costs, because they reinforce the same
+direction. Ten *unrelated* associations cost ten times as much. Consistent evidence
+is cheap for this kind of memory and unrelated facts are expensive, which is the
+same statement as experiment 1 read from the other end.
+
+### 8b. When demonstrations disagree
+
+Same key, `a` demonstrations saying A and `b` saying B, no distractors.
+
+| A:B | recall A | recall B | closed form for A |
+|---|---|---|---|
+| 8:0 | 1.000 | 0.012 | 1.000 |
+| 6:2 | 0.950 | 0.319 | 0.949 |
+| 4:4 | 0.709 | 0.709 | 0.707 |
+| 2:6 | 0.319 | 0.950 | 0.316 |
+
+The state neither picks a winner nor breaks. It returns the vote-weighted blend. For
+exactly orthogonal answers the readout is `a·vA + b·vB`, so the cosine to `vA` is
+`a/√(a²+b²)`, and the measured column lands on that to within 0.003. The 4:4 row is
+`1/√2`: equally supported, equally wrong about both.
+
+That closed form is the tightest check in this document. It is not a curve fit or an
+approximation like the one in `derivation.md`; it is exact for orthogonal answers,
+and the measurement converging on it is evidence the implementation does what the
+algebra says.
+
+### A note on the numbers in the page versus the numbers here
+
+The artifact's demonstration panel averages over 24 runs and writes the distractors
+*before* the demonstrations, which lets a single pass produce the whole curve instead
+of sixteen separate runs. Hebbian writes are order-independent, so the final state is
+identical either way, but the random stream is consumed in a different order and the
+draws differ. The page therefore agrees with the table above in expectation and to
+within sampling noise, not digit for digit. Both are means, neither is a single run,
+and `npm run experiments` reproduces this table exactly.

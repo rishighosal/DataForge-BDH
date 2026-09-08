@@ -91,17 +91,17 @@ function render(markdown) {
 }
 
 const PRINT_CSS = `
-@page { size: A4; margin: 12mm 15mm; }
-body { font-family: Georgia, 'Times New Roman', serif; font-size: 8.2pt; line-height: 1.31;
+@page { size: A4; margin: 10mm 13mm; }
+body { font-family: Georgia, 'Times New Roman', serif; font-size: 7.75pt; line-height: 1.26;
        color: #17181a; margin: 0; }
-h1 { font-size: 13.5pt; line-height: 1.18; margin: 0 0 2mm; }
-h2 { font-size: 9.3pt; margin: 2.4mm 0 0.9mm; padding-bottom: 0.6mm; border-bottom: 0.6pt solid #9aa0a8; }
-p { margin: 0 0 1.4mm; text-align: justify; }
+h1 { font-size: 12.4pt; line-height: 1.15; margin: 0 0 1.6mm; }
+h2 { font-size: 8.8pt; margin: 1.9mm 0 0.7mm; padding-bottom: 0.6mm; border-bottom: 0.6pt solid #9aa0a8; }
+p { margin: 0 0 1.15mm; text-align: justify; }
 a { color: #14508c; text-decoration: none; }
 code { font-family: Consolas, 'Courier New', monospace; font-size: 8pt; background: #f1f2f4;
        padding: 0 1px; border-radius: 2px; }
-table { border-collapse: collapse; width: 100%; margin: 1.3mm 0 1.8mm; font-size: 7.7pt; }
-th, td { border: 0.5pt solid #c3c7cd; padding: 1mm 1.6mm; text-align: left; }
+table { border-collapse: collapse; width: 100%; margin: 1.1mm 0 1.5mm; font-size: 7.3pt; }
+th, td { border: 0.5pt solid #c3c7cd; padding: 0.8mm 1.4mm; text-align: left; }
 th { background: #eef0f2; font-weight: 700; }
 td { font-variant-numeric: tabular-nums; }
 .eyebrow { font-size: 7pt; letter-spacing: 0.07em; text-transform: uppercase; color: #6a7078;

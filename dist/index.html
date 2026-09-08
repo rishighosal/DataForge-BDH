@@ -804,7 +804,168 @@ footer {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Accessibility helpers
+ * ------------------------------------------------------------------ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+.noscript-note {
+  margin: 0;
+  padding: 14px clamp(16px, 4vw, 44px);
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Sixty-second test
+ * ------------------------------------------------------------------ */
+
+.callout.sixty {
+  border-left-color: var(--cache);
+  max-width: 56rem;
+}
+
+.sixty-steps {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.93rem;
+}
+
+.sixty-steps li::marker {
+  color: var(--cache);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ *
+ * Narrow screens
+ *
+ * The roster board is the part that suffers: three rule columns plus a name
+ * and a room does not fit on a phone. It scrolls sideways inside its own
+ * container rather than pushing the page around, the name column stays put
+ * so a scrolled row is still identifiable, and the controls stop trying to
+ * sit in a row.
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .board {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 0.82rem;
+  }
+
+  th,
+  td {
+    padding: 8px 10px;
+  }
+
+  .board td.name {
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  tr.is-wrong td.name {
+    background: color-mix(in srgb, var(--bad) 6%, var(--surface));
+  }
+
+  .board thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+
+  .scoreline {
+    gap: 8px 14px;
+  }
+
+  .score .num {
+    font-size: 1.1rem;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .section-head {
+    margin-bottom: 20px;
+  }
+
+  /* A crosshair tooltip is useless without a pointer, and it overlaps the plot
+     on a small screen. Charts keep their per-mark <title> tooltips. */
+  .tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .eq {
+    font-size: 0.82rem;
+  }
+
+  .pill {
+    font-size: 0.66rem;
+  }
+}
 </style>
+
+<a class="skip-link" href="#claim">Skip to the claim</a>
+
+<noscript>
+  <div class="noscript-note">
+    <strong>This page computes everything in the browser, so it needs JavaScript.</strong>
+    With it switched off you will see the writing but none of the memory experiments.
+    The same figures are in the repository under <code>docs/experiments.md</code>, and
+    <code>npm run experiments</code> regenerates them without a browser.
+  </div>
+</noscript>
 
 <div class="topbar">
   <div class="wrap topbar-inner">
@@ -814,6 +975,7 @@ footer {
       <a href="#mechanism">Mechanism</a>
       <a href="#budget">The finding</a>
       <a href="#bdh">Inside BDH</a>
+      <a href="#bdhcq">BDH-CQ</a>
       <a href="#limits">Limits</a>
       <a href="#quiz">Check yourself</a>
       <a href="#sources">Sources</a>
@@ -862,6 +1024,22 @@ footer {
       <span class="pill">~8 minutes</span>
       <span class="pill">Everything on this page is computed live</span>
       <span class="pill">Synthetic roster, not real students</span>
+    </div>
+
+    <div class="callout sixty" style="margin-top:26px">
+      <p class="eyebrow" style="color:var(--cache)">Reproduce the claim in sixty seconds</p>
+      <ol class="sixty-steps">
+        <li>In the table above, drag <strong>matrix size <span class="mono">d</span></strong> down to 10.
+          More students now share fewer dimensions, so more rooms come back wrong.</li>
+        <li>Drag it up to 40. Every answer is correct again, and the footprint line shows the
+          state got <em>bigger</em> to buy that.</li>
+        <li>Put <span class="mono">d</span> back to 16 and drag <strong>names taught</strong> from
+          1 to 20. Watch the crosses appear as the same 2 KB is asked to hold more.</li>
+      </ol>
+      <p style="font-size:.88rem;margin-top:10px" class="muted">
+        That is the whole claim: fidelity is traded against how much you store in a fixed
+        space. Everything below this point is why, and what three architectures do about it.
+      </p>
     </div>
   </div>
 </section>
@@ -1105,6 +1283,63 @@ footer {
 </section>
 
 <!-- ============================================================ -->
+<section id="bdhcq">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">BDH-CQ</p>
+      <h2>The same superposition, pointed at a job it is good at</h2>
+      <p class="prose muted">Everything up to here has treated piling associations into one
+      matrix as the thing that goes wrong. It is also the thing that makes learning from
+      demonstrations work.</p>
+    </div>
+
+    <div class="split" style="margin-bottom:26px">
+      <div class="prose">
+        <p>BDH-CQ's contextual memory accumulates additively as each demonstration arrives.
+        Its own paper connects that to fast-weight and linear-attention views of contextual
+        association. Additive accumulation has a property worth seeing directly: write the
+        same association several times with different noise on it each time, and the signal
+        is identical on every write so it adds coherently, while the noise is different on
+        every write so it partly cancels.</p>
+        <p>Below, a rule is written repeatedly into a state that is also holding 24 unrelated
+        associations. Nothing is trained. Nothing is told the rule. Turn the noise up and add
+        demonstrations, and a fixed-size state sharpens up on something it only ever saw
+        corrupted copies of.</p>
+      </div>
+      <div class="callout finding">
+        <p style="font-weight:600;margin-bottom:8px">Why this is the same claim, not a new one</p>
+        <p class="prose" style="font-size:.93rem">The budget has not changed. Consistent
+        evidence spends less of it, because ten writes of one association cost roughly what
+        one write costs, while ten unrelated associations cost ten times as much. That is why
+        in-context learning from many demonstrations is cheap for this kind of memory and
+        holding many unrelated facts is expensive. Same fixed state, same arithmetic, read
+        the other way round.</p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div id="demonstration-lab"></div>
+    </div>
+
+    <div class="callout evidence" style="margin-top:24px">
+      <p style="font-weight:700;font-size:.85rem;text-transform:uppercase;letter-spacing:.04em;color:var(--warn);margin-bottom:10px">
+        What this is and is not
+      </p>
+      <div class="prose" style="font-size:.92rem;max-width:none">
+        <p>This is a toy of the accumulation mechanism, not an implementation of BDH-CQ. BDH-CQ
+        ingests real ARC-style demonstrations, has a separate latent workspace that iterates on
+        the query, and reports 29.5% pass@2 on ARC-AGI-1 at $0.0007 per task with 150M
+        parameters. We have implemented none of that and reproduced none of it; the figure is
+        its authors' and we cite it as theirs. What we can show is the one property the
+        contextual state gets from being additive, at a scale where you can check it against a
+        closed form: the conflicting-evidence table lands on <span class="mono">a/√(a²+b²)</span>
+        because that is the angle between a weighted sum and one of its terms.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ -->
 <section id="landscape">
   <div class="wrap">
     <div class="section-head">
@@ -1231,7 +1466,7 @@ footer {
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Check yourself</p>
-      <h2>Four questions</h2>
+      <h2>Five questions</h2>
       <p class="prose muted">If these are easy, the page worked. If not, the sandbox above
       answers all four.</p>
     </div>
@@ -1274,14 +1509,17 @@ footer {
     <div class="colophon">
       <p><strong>Run it yourself.</strong> <span class="mono">git clone</span> the repository, then
       <span class="mono">npm start</span> serves the page at <span class="mono">localhost:4173</span>,
-      <span class="mono">npm test</span> runs 33 assertions over the memory maths, and
+      <span class="mono">npm test</span> runs 37 assertions over the memory maths, and
       <span class="mono">npm run experiments</span> regenerates every number quoted above.
-      No build step and no dependencies.</p>
+      No dependencies, so there is no install step. Continuous integration runs the same
+      commands on every push and fails the build if the published single-file page has
+      drifted from the source it was generated from.</p>
       <p><strong>What is live.</strong> Every chart, table and score on this page is computed
       in your browser from a seeded generator when the page loads and again whenever you move
       a control. The only pre-computed figures are the four-row sparsity table and the state-norm
       numbers in the BDH section, both labelled where they appear and both reproducible with
-      <span class="mono">npm run experiments</span>.</p>
+      <span class="mono">npm run experiments</span>. Curves that would be too noisy to read as
+      a single run are means over many seeds, and say so where they appear.</p>
       <p><strong>Tools and attribution.</strong> Built by our team for DataForge 2026 at IIT
       Kharagpur. We used Claude Code as a coding and drafting assistant throughout, and we
       checked every equation, quotation and figure against the primary papers ourselves before
@@ -2240,6 +2478,227 @@ function vectorRows(container, rows) {
   return svg;
 }
 
+/* ---- src/demonstrations.js ---- */
+/**
+ * Demonstration lab — the BDH-CQ side of the same mechanism.
+ *
+ * Every other component here treats superposition as damage. This one points it at
+ * the job it is good at. Write the same association several times with different
+ * noise on it each time: the signal is identical every time so it adds coherently,
+ * the noise is different every time so it partly cancels, and a fixed-size state
+ * ends up holding a rule nobody handed it directly.
+ *
+ * That is what BDH-CQ's contextual memory does with demonstrations, one level up
+ * from tokens. This is a toy of the mechanism, not an implementation of BDH-CQ.
+ */
+
+
+
+
+const SEEDS = 24; // enough to smooth the curve, few enough to stay under a frame
+
+function createDemonstrationLab(root, config = {}) {
+  const state = {
+    d: config.d ?? 32,
+    demos: config.demos ?? 4,
+    sigma: config.sigma ?? 0.5,
+    distractors: config.distractors ?? 24,
+    split: 4,
+    seed: 4200,
+  };
+
+  root.replaceChildren();
+  root.innerHTML = `
+    <div class="controls" style="margin-bottom:18px">
+      <div class="control">
+        <label for="dl-m">Demonstrations of the rule <span class="value" id="dl-m-val">${state.demos}</span></label>
+        <input id="dl-m" type="range" min="1" max="16" step="1" value="${state.demos}">
+      </div>
+      <div class="control">
+        <label for="dl-s">Noise on each one <span class="value" id="dl-s-val">${state.sigma.toFixed(2)}</span></label>
+        <input id="dl-s" type="range" min="0" max="0.8" step="0.05" value="${state.sigma}">
+      </div>
+    </div>
+    <div class="split" style="gap:24px">
+      <div>
+        <div class="chart-title">Recall of the rule against evidence seen</div>
+        <div id="dl-chart"></div>
+        <div class="legend" style="margin-top:10px">
+          <span class="legend-item"><span class="swatch" style="background:var(--hebbian)"></span>noisy demonstrations</span>
+          <span class="legend-item"><span class="swatch" style="background:var(--cache)"></span>clean demonstrations</span>
+        </div>
+      </div>
+      <div class="stack" style="gap:14px">
+        <div id="dl-read"></div>
+        <div>
+          <div class="chart-title">When demonstrations disagree</div>
+          <div class="control">
+            <label for="dl-split">Evidence split <span class="value" id="dl-split-val">4 : 4</span></label>
+            <input id="dl-split" type="range" min="0" max="8" step="1" value="${state.split}">
+          </div>
+          <div id="dl-vote" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>`;
+
+  const chartBox = root.querySelector('#dl-chart');
+  const readBox = root.querySelector('#dl-read');
+  const voteBox = root.querySelector('#dl-vote');
+
+  function noisyCopy(v, sigma, rng) {
+    const d = state.d;
+    const perturb = randomUnitVector(d, rng);
+    const out = new Float64Array(d);
+    let sq = 0;
+    for (let i = 0; i < d; i++) {
+      out[i] = v[i] + sigma * perturb[i] * Math.sqrt(d);
+      sq += out[i] * out[i];
+    }
+    const n = Math.sqrt(sq);
+    for (let i = 0; i < d; i++) out[i] /= n;
+    return out;
+  }
+
+  /**
+   * Mean recall of the rule after 1..16 demonstrations, averaged over SEEDS runs.
+   *
+   * A single run of this is jagged enough to read as "no effect", which would be a
+   * lie about the mechanism rather than a quirk of presentation, so the curve is a
+   * mean like every number in docs/experiments.md.
+   *
+   * The distractors are written *before* the demonstrations here, which lets one
+   * pass produce the whole curve instead of 16 separate runs. That is only legal
+   * because Hebbian writes are order-independent — a property proved in
+   * docs/derivation.md and asserted to 1e-9 in test/memory.test.js.
+   */
+  function recallCurve(sigma) {
+    const d = state.d;
+    const totals = new Float64Array(16);
+    for (let s = 0; s < SEEDS; s++) {
+      const rng = mulberry32(state.seed + s);
+      const memory = new FastWeightMemory(d, 'hebbian');
+      const k = randomUnitVector(d, rng);
+      const v = randomUnitVector(d, rng);
+      for (let i = 0; i < state.distractors; i++) {
+        memory.write(randomUnitVector(d, rng), randomUnitVector(d, rng));
+      }
+      for (let m = 1; m <= 16; m++) {
+        memory.write(k, sigma === 0 ? v : noisyCopy(v, sigma, rng));
+        totals[m - 1] += cosine(memory.read(k), v);
+      }
+    }
+    return Array.from(totals, (t) => t / SEEDS);
+  }
+
+  function render() {
+    const xs = Array.from({ length: 16 }, (_, i) => i + 1);
+    const noisyCurve = recallCurve(state.sigma);
+    const cleanCurve = recallCurve(0);
+    lineChart(chartBox, {
+      series: [
+        {
+          label: 'noisy',
+          colorVar: '--hebbian',
+          points: xs.map((m, i) => ({ x: m, y: Math.max(0, noisyCurve[i]) })),
+        },
+        {
+          label: 'clean',
+          colorVar: '--cache',
+          points: xs.map((m, i) => ({ x: m, y: Math.max(0, cleanCurve[i]) })),
+        },
+      ],
+      xMin: 1,
+      xMax: 16,
+      yMin: 0,
+      yMax: 1,
+      xLabel: 'demonstrations written',
+      xTicks: [1, 4, 8, 12, 16],
+      yFormat: (v) => v.toFixed(2),
+    });
+
+    const now = noisyCurve[state.demos - 1];
+    const once = noisyCurve[0];
+    const tone = now > 0.85 ? 'ok' : now > 0.5 ? 'warn' : 'bad';
+    readBox.innerHTML = `
+      <div class="scoreline" style="padding:0">
+        <div class="score">
+          <span class="label">After ${state.demos}</span>
+          <span class="num">${now.toFixed(3)}</span>
+          <span class="tag ${tone}">recall of the rule</span>
+        </div>
+      </div>
+      <p class="muted" style="font-size:.84rem;margin-top:8px">
+        One noisy demonstration gets you ${once.toFixed(3)}. ${state.demos} of them get you
+        ${now.toFixed(3)}, and the state is exactly the same size either way. The signal is
+        identical each time so it adds up. The noise is different each time so it partly
+        cancels. Nothing was trained and nothing was told the rule. Curves are means over
+        ${SEEDS} runs, because one run of this is noisy enough to look like nothing happening.
+      </p>`;
+
+    // The vote, also averaged. For exactly orthogonal answers the readout is
+    // a*vA + b*vB and cos to vA is a/sqrt(a^2+b^2); two random unit vectors are only
+    // approximately orthogonal, so one draw sits a few points off the closed form and
+    // the mean converges onto it. Watching that convergence is the point.
+    const a = state.split;
+    const b = 8 - a;
+    let sumA = 0;
+    let sumB = 0;
+    for (let s = 0; s < SEEDS * 2; s++) {
+      const rng = mulberry32(5200 + s);
+      const memory = new FastWeightMemory(state.d, 'hebbian');
+      const k = randomUnitVector(state.d, rng);
+      const vA = randomUnitVector(state.d, rng);
+      const vB = randomUnitVector(state.d, rng);
+      for (let i = 0; i < a; i++) memory.write(k, vA);
+      for (let i = 0; i < b; i++) memory.write(k, vB);
+      const out = memory.read(k);
+      sumA += cosine(out, vA);
+      sumB += cosine(out, vB);
+    }
+    const recallA = sumA / (SEEDS * 2);
+    const recallB = sumB / (SEEDS * 2);
+    const denom = Math.sqrt(a * a + b * b) || 1;
+
+    voteBox.innerHTML = `
+      <div class="board">
+        <table>
+          <caption class="visually-hidden">Recall of two conflicting answers against the closed-form prediction</caption>
+          <thead><tr><th scope="col">answer</th><th scope="col">votes</th><th scope="col">recall</th><th scope="col">closed form</th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--delta);font-weight:600">A</td><td class="mono">${a}</td>
+                <td class="mono">${recallA.toFixed(3)}</td><td class="mono">${(a / denom).toFixed(3)}</td></tr>
+            <tr><td style="color:var(--decay);font-weight:600">B</td><td class="mono">${b}</td>
+                <td class="mono">${recallB.toFixed(3)}</td><td class="mono">${(b / denom).toFixed(3)}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:.82rem;margin-top:8px">
+        Same key, two different answers. The state neither picks one nor breaks: it returns
+        the vote-weighted blend, and measured recall lands on <span class="mono">a/√(a²+b²)</span>,
+        which is the closed form for the angle between a sum and one of its terms.
+      </p>`;
+  }
+
+  root.querySelector('#dl-m').addEventListener('input', (event) => {
+    state.demos = Number(event.target.value);
+    root.querySelector('#dl-m-val').textContent = state.demos;
+    render();
+  });
+  root.querySelector('#dl-s').addEventListener('input', (event) => {
+    state.sigma = Number(event.target.value);
+    root.querySelector('#dl-s-val').textContent = state.sigma.toFixed(2);
+    render();
+  });
+  root.querySelector('#dl-split').addEventListener('input', (event) => {
+    state.split = Number(event.target.value);
+    root.querySelector('#dl-split-val').textContent = `${state.split} : ${8 - state.split}`;
+    render();
+  });
+
+  render();
+  return { render, state };
+}
+
 /* ---- src/ui.js ---- */
 /**
  * The interactive pieces. Each one owns a bit of DOM, recomputes from scratch on
@@ -2826,6 +3285,7 @@ function createQuiz(root, items) {
 
 
 
+
 const mount = (id, factory) => {
   const node = document.getElementById(id);
   if (node) factory(node);
@@ -2853,6 +3313,8 @@ mount('compare-board', (node) =>
   }),
 );
 
+mount('demonstration-lab', (node) => createDemonstrationLab(node, { d: 32, demos: 4, sigma: 0.5 }));
+
 mount('quiz', (node) =>
   createQuiz(node, [
     {
@@ -2877,6 +3339,18 @@ mount('quiz', (node) =>
       answer: 0,
       explain:
         'This one surprised us too. At n = 4d we measure Hebbian at 0.449 and the delta rule at 0.241. The delta rule subtracts the current read before writing, which erases older associations to keep recent ones sharp. It is not worse, it is allocating the same budget differently — the recall-by-age chart shows exactly where its fidelity went.',
+    },
+    {
+      question:
+        'The same rule is written into the state sixteen times, each copy noisy in a different way. Recall of that rule goes up. Why?',
+      options: [
+        'The signal is identical each time so it adds up, while the noise differs each time so it partly cancels',
+        'The state grew to make room for the extra copies',
+        'Later writes overwrite the earlier ones',
+      ],
+      answer: 0,
+      explain:
+        'This is the BDH-CQ side of the same mechanism. Sixteen noisy demonstrations take recall from 0.232 to 0.804 without the state changing size at all. It is also why consistent evidence is cheap for this memory and unrelated facts are expensive: ten writes of one association cost about what one costs.',
     },
     {
       question:

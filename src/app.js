@@ -10,6 +10,7 @@ import {
   createAgeProfile,
   createQuiz,
 } from './ui.js';
+import { createDemonstrationLab } from './demonstrations.js';
 
 const mount = (id, factory) => {
   const node = document.getElementById(id);
@@ -38,6 +39,8 @@ mount('compare-board', (node) =>
   }),
 );
 
+mount('demonstration-lab', (node) => createDemonstrationLab(node, { d: 32, demos: 4, sigma: 0.5 }));
+
 mount('quiz', (node) =>
   createQuiz(node, [
     {
@@ -62,6 +65,18 @@ mount('quiz', (node) =>
       answer: 0,
       explain:
         'This one surprised us too. At n = 4d we measure Hebbian at 0.449 and the delta rule at 0.241. The delta rule subtracts the current read before writing, which erases older associations to keep recent ones sharp. It is not worse, it is allocating the same budget differently — the recall-by-age chart shows exactly where its fidelity went.',
+    },
+    {
+      question:
+        'The same rule is written into the state sixteen times, each copy noisy in a different way. Recall of that rule goes up. Why?',
+      options: [
+        'The signal is identical each time so it adds up, while the noise differs each time so it partly cancels',
+        'The state grew to make room for the extra copies',
+        'Later writes overwrite the earlier ones',
+      ],
+      answer: 0,
+      explain:
+        'This is the BDH-CQ side of the same mechanism. Sixteen noisy demonstrations take recall from 0.232 to 0.804 without the state changing size at all. It is also why consistent evidence is cheap for this memory and unrelated facts are expensive: ten writes of one association cost about what one costs.',
     },
     {
       question:

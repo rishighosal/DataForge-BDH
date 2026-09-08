@@ -422,6 +422,89 @@ function experimentStateNorm() {
   return { d, seeds: SEEDS, rows };
 }
 
+/* ================================================================ *
+ * 8. Accumulation as evidence, not just as damage
+ *
+ * Everything above treats superposition as the thing that goes wrong. It is also
+ * the thing that makes in-context learning work: BDH-CQ's contextual state
+ * accumulates additively as each demonstration arrives, so consistent evidence
+ * adds coherently while the noise on it does not. Worth measuring, because it is
+ * the same mechanism pointed at a different job.
+ * ================================================================ */
+
+function noisyCopy(v, d, sigma, rng) {
+  const out = new Float64Array(d);
+  const perturb = randomUnitVector(d, rng);
+  let sq = 0;
+  for (let i = 0; i < d; i++) {
+    out[i] = v[i] + sigma * perturb[i] * Math.sqrt(d);
+    sq += out[i] * out[i];
+  }
+  const n = Math.sqrt(sq);
+  for (let i = 0; i < d; i++) out[i] /= n;
+  return out;
+}
+
+function experimentDemonstrations() {
+  const d = 32;
+  const distractors = 24;
+  const counts = [1, 2, 4, 8, 16];
+
+  heading(`8. Repeated demonstrations of one rule, amid ${distractors} distractors (d=${d})`);
+  console.log(`${pad('demos', 6)} ${pad('clean', 9)} ${pad('noisy σ=0.5', 12)}`);
+
+  const rows = counts.map((m) => {
+    const clean = [];
+    const noised = [];
+    for (let s = 0; s < SEEDS; s++) {
+      for (const [sigma, bucket] of [[0, clean], [0.5, noised]]) {
+        const rng = mulberry32(4200 + s);
+        const memory = new FastWeightMemory(d, 'hebbian');
+        const k = randomUnitVector(d, rng);
+        const v = randomUnitVector(d, rng);
+        for (let i = 0; i < m; i++) memory.write(k, sigma === 0 ? v : noisyCopy(v, d, sigma, rng));
+        for (let i = 0; i < distractors; i++) {
+          memory.write(randomUnitVector(d, rng), randomUnitVector(d, rng));
+        }
+        bucket.push(cosine(memory.read(k), v));
+      }
+    }
+    const row = { demos: m, clean: mean(clean), noisy: mean(noised) };
+    console.log(`${pad(m, 6)} ${pad(f3(row.clean), 9)} ${pad(f3(row.noisy), 12)}`);
+    return row;
+  });
+
+  heading('8b. Conflicting demonstrations at one key: the state returns a vote');
+  console.log(`${pad('A:B', 7)} ${pad('recall A', 9)} ${pad('recall B', 9)} ${pad('predicted A', 12)}`);
+
+  const conflicts = [[8, 0], [6, 2], [4, 4], [2, 6]].map(([a, b]) => {
+    const ra = [];
+    const rb = [];
+    for (let s = 0; s < SEEDS; s++) {
+      const rng = mulberry32(5200 + s);
+      const memory = new FastWeightMemory(d, 'hebbian');
+      const k = randomUnitVector(d, rng);
+      const vA = randomUnitVector(d, rng);
+      const vB = randomUnitVector(d, rng);
+      for (let i = 0; i < a; i++) memory.write(k, vA);
+      for (let i = 0; i < b; i++) memory.write(k, vB);
+      const out = memory.read(k);
+      ra.push(cosine(out, vA));
+      rb.push(cosine(out, vB));
+    }
+    // For orthogonal vA, vB the readout is a*vA + b*vB, so cos to vA is
+    // a / sqrt(a^2 + b^2). Printing it keeps the measurement honest.
+    const predicted = a / Math.sqrt(a * a + b * b);
+    const row = { a, b, recallA: mean(ra), recallB: mean(rb), predictedA: predicted };
+    console.log(
+      `${pad(`${a}:${b}`, 7)} ${pad(f3(row.recallA), 9)} ${pad(f3(row.recallB), 9)} ${pad(f3(predicted), 12)}`,
+    );
+    return row;
+  });
+
+  return { d, distractors, seeds: SEEDS, rows, conflicts };
+}
+
 /* ================================================================ */
 
 const results = {
@@ -434,6 +517,7 @@ const results = {
   roster: experimentRoster(),
   recency: experimentRecency(),
   stateNorm: experimentStateNorm(),
+  demonstrations: experimentDemonstrations(),
 };
 
 if (SAVE) {

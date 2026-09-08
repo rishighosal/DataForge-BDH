@@ -130,6 +130,65 @@ did versus what we did.
 
 Both were caught by looking at the rendered page rather than by reading the code.
 
+### 2026-09-08 (later) — auditing against the rubric instead of against our taste
+
+Went back to the published criteria and scored ourselves honestly rather than admiring
+the thing. Four gaps, three of them real:
+
+1. **The artifact URL was not public.** The submission requires a public URL that opens
+   without sign-in and ours was a private share link. Added a GitHub Pages workflow that
+   builds `dist/index.html` and deploys it. That also fixes link stability, which is a
+   separate scored item, since a Pages URL outlives whatever we happen to be using.
+2. **No explicit sixty-second path.** The criteria name a sixty-second test and we were
+   relying on the reader inventing one. Added three numbered slider moves at the top that
+   reproduce the central claim, with the expected outcome of each stated before you do it.
+3. **BDH-CQ was one paragraph.** For a criterion worth ten points that is thin. Built the
+   demonstration panel instead (below).
+4. **Mobile.** We had written the media queries and never looked. Turned out to be fine —
+   no page-level horizontal overflow at any width headless Chromium will render — but the
+   first screenshot at 390 px looked catastrophically broken and cost half an hour before
+   we worked out the renderer clamps to 477 px and crops the image. Worth writing down so
+   nobody re-investigates it.
+
+### 2026-09-08 — accumulation is not only damage
+
+The whole page treated superposition as the failure mode, which is a one-note reading of
+the mechanism and left BDH-CQ as a footnote. BDH-CQ's contextual state accumulates
+additively per demonstration, so the obvious question is what additive accumulation buys
+you rather than what it costs.
+
+Measured it before building anything. Write one association repeatedly with independent
+noise on each copy: recall goes 0.232 → 0.804 over sixteen writes with the state size
+unchanged, because the signal is identical every time and the noise is not. Write two
+different values at one key and the readout is the vote, landing on `a/√(a²+b²)`, which is
+exact for orthogonal answers rather than an approximation.
+
+That closed form is now the tightest check in the repository. It is also the reason the
+panel exists: you can watch a measurement converge onto an exact prediction, which is a
+better argument that the implementation is right than any amount of us saying so.
+
+Two things went wrong building it. The first version used a single seed, so the noisy curve
+was jagged enough to read as "nothing is happening" (0.452 at one demonstration, 0.456 at
+four) and the vote showed 0.760 against a closed form of 0.707, which looks like the closed
+form is wrong. Both were sampling, not error. Averaged the panel over 24 runs and the curve
+became monotone and the vote landed on 0.702. The lesson is the same one from 2026-09-07:
+if a single run is too noisy to show the effect, showing a single run is a misleading
+choice, not an honest one.
+
+To keep the averaged version fast enough for a slider, the distractors are now written
+before the demonstrations, which lets one pass produce the whole curve. That is only legal
+because Hebbian writes are order-independent — a property we had already proved and tested,
+which is the first time one of those tests paid for itself as something other than a check.
+
+### 2026-09-08 — build determinism
+
+Adding CI surfaced a bug that had been sitting there quietly. `scripts/build.js` concatenated
+source files verbatim, so the bundle inherited whatever line endings the checkout had: mixed
+CRLF on Windows, pure LF on Linux. The CI step that fails when `dist/` has drifted from
+`src/` would therefore have failed on every push for a reason that has nothing to do with
+the code. Normalised line endings on read; the build is now byte-identical across platforms
+and two consecutive builds hash the same.
+
 ### Still open
 
 - β for the delta rule is hard-coded to 1 everywhere. There is almost certainly
@@ -138,3 +197,8 @@ Both were caught by looking at the rendered page rather than by reading the code
   is a random-key baseline.
 - No multi-query recall benchmark, which is the task the delta rule is actually
   built for, and the honest place to test it on its own terms.
+- The demonstration panel varies noise and count but not the *number of distinct rules*
+  being demonstrated at once, which is closer to what an in-context learner actually
+  faces.
+- Nobody outside the team has sat down with the page yet. The sixty-second path is our
+  guess at where a stranger starts, not an observation.

@@ -2,8 +2,11 @@
 
 An interactive explainer for the **DataForge 2026 Pathway track** ("Explain the Frontier").
 
-**Live artifact:** https://claude.ai/code/artifact/394c8c5a-8fe6-4a60-a136-c9ba087ad747
+**Live page:** https://USERNAME.github.io/fast-weights-fixed-memory/ *(GitHub Pages; deploys from `main` via `.github/workflows/pages.yml` — replace `USERNAME` once the repo is pushed)*
+**Mirror:** https://claude.ai/code/artifact/394c8c5a-8fe6-4a60-a136-c9ba087ad747
 **One-page concept summary:** [`docs/one-pager.pdf`](docs/one-pager.pdf)
+
+![The roster board: a 16x16 matrix asked where twenty students live, getting two wrong](docs/screenshot.png)
 
 We wrote a hall allotment into a fixed-size matrix using BDH's synaptic update rule, then
 asked it where each student lives. It gets some of them wrong, and it gets them wrong in a
@@ -14,12 +17,17 @@ which of them is actually better (the answer is "at what?").
 ```
 git clone <this repo> && cd fast-weights-fixed-memory
 npm start          # http://localhost:4173 — no install step, there are no dependencies
-npm test           # 33 assertions over the memory maths
+npm test           # 37 assertions over the memory maths
 npm run experiments  # regenerates every number quoted in the docs
 npm run build      # flattens src/ into dist/index.html
+npm run pdf        # regenerates the one-page summary PDF from its markdown
+npm run check      # test + build + pdf, the pre-commit gate
 ```
 
-Node 18+. There is no `npm install`, because there is nothing to install.
+Node 18+. There is no `npm install`, because there is nothing to install. CI runs the
+same commands on every push and additionally fails if the committed `dist/index.html`
+has drifted from `src/`, so the published page can never silently disagree with the
+source (`.github/workflows/ci.yml`).
 
 ---
 
@@ -51,7 +59,9 @@ want to know what a *fast weight* actually is, that is exactly the gap this fill
 3. Explain why the failure mode is a confident wrong answer rather than noise.
 4. State what BDH's `σ(i,j) += Y(i)X(j)` has to do with linear attention and fast weights.
 5. Name what the delta rule and a decay gate buy you, and what they spend to buy it.
-6. Say which parts of the page are our toy model and which parts are in the papers.
+6. Explain why the same superposition that loses facts is what lets the state learn a rule
+   from repeated demonstrations, which is BDH-CQ's contextual memory in miniature.
+7. Say which parts of the page are our toy model and which parts are in the papers.
 
 ## What is live, what is precomputed, what is synthetic
 
@@ -76,15 +86,16 @@ which is a modelling choice we test rather than assume (see `docs/experiments.md
 | `src/memory.js` | All the maths. RNG, vector generators, the three write rules, both memories, metrics. Imported unchanged by the browser, the tests and the experiment scripts. |
 | `src/roster.js` | The hall-allotment task and the decoder that turns a readout back into a room. |
 | `src/charts.js` | SVG line chart, grouped bars, matrix heatmap, vector bars. No chart library. |
-| `src/ui.js` | The four interactive components. Each recomputes from scratch on any change. |
+| `src/demonstrations.js` | The BDH-CQ panel: accumulation as evidence rather than damage. |
+| `src/ui.js` | The four other interactive components. Each recomputes from scratch on any change. |
 | `src/app.js` | Mounts components into the page. Holds no logic. |
 | `src/styles.css` | Design tokens and layout, light and dark. |
 | `index.html` | Dev entry. Loads `src/` as ES modules, so it needs `npm start`. |
 | `dist/index.html` | Built single file. Opens straight off disk; this is what gets published. |
-| `test/` | 33 assertions, `node --test`. |
+| `test/` | 37 assertions, `node --test`. |
 | `scripts/serve.js` | ~60-line static server. |
 | `scripts/build.js` | Flattens the modules into one file, and fails if two modules ever declare the same top-level name. |
-| `scripts/experiments.js` | The seven experiments behind `docs/experiments.md`. |
+| `scripts/experiments.js` | The eight experiments behind `docs/experiments.md`. |
 
 There is one implementation of the memory maths and everything imports it. That is a
 deliberate reaction to a bug we hit early, where a Node copy and a browser copy of the same
@@ -116,10 +127,12 @@ quietly lying:
 - Hebbian recall is flat across age (<0.05 spread); delta and decay tilt by >0.4
 - Hebbian's state norm tracks √n within 5%; delta's saturates
 - sparse keys at BDH's ~5% match dense within 0.03, and 25%-dense keys do not
+- repeated noisy demonstrations of one rule improve recall monotonically
+- conflicting demonstrations return the vote-weighted blend, matching `a/√(a²+b²)` within 0.04
 
 ## Reproducing the numbers
 
-`npm run experiments` prints all seven tables and writes `results/experiments.json`. Forty
+`npm run experiments` prints all eight tables and writes `results/experiments.json`. Forty
 seeds per cell. The headline results:
 
 - **Recall against load** (`d=32`): Hebbian tracks `√(d/(d+n−1))` to three decimals.
@@ -129,9 +142,29 @@ seeds per cell. The headline results:
 - **Sparsity**: at BDH's ~5% activation the sparse and dense regimes agree within noise,
   because 3-of-64 keys overlap only 14% of the time.
 - **State norm**: Hebbian's is √n to within 0.5% at n=512; delta's saturates near 5.6.
+- **Accumulation is not only damage**: sixteen noisy demonstrations of one rule lift recall
+  from 0.232 to 0.804 in a state that never grows, and conflicting demonstrations return a
+  vote that lands on the closed form `a/√(a²+b²)` to within 0.003.
 
 Full tables and interpretation in [`docs/experiments.md`](docs/experiments.md). The theory
 curve is derived in [`docs/derivation.md`](docs/derivation.md).
+
+## Accessibility and browser support
+
+- Colour is never the only signal. Every chart series carries a direct end-label, every
+  table column is headed, and pass/fail in the roster is a tick or a cross as well as a
+  colour. The categorical palette was picked against a contrast and colour-vision validator
+  rather than by eye, and re-picked for the dark surface instead of being inverted.
+- Both themes are driven by tokens, and the page honours an explicit light/dark choice as
+  well as the OS setting.
+- There is a skip link, visible focus rings, and `prefers-reduced-motion` is respected.
+- Grouped-bar charts expose every value through per-mark `<title>` elements, so the numbers
+  are reachable without reading the picture.
+- Without JavaScript the page says so and points at the reproducible figures, rather than
+  rendering empty panels.
+- Layout verified with no page-level horizontal overflow from 477 px (the narrowest headless
+  Chromium allows) to 1440 px. Wide tables scroll inside their own container with the student
+  column pinned, so the page body never scrolls sideways.
 
 ## Known limitations
 

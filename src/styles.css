@@ -799,3 +799,153 @@ footer {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* ------------------------------------------------------------------ *
+ * Accessibility helpers
+ * ------------------------------------------------------------------ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 10px 16px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border-strong);
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+.noscript-note {
+  margin: 0;
+  padding: 14px clamp(16px, 4vw, 44px);
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+  border-bottom: 1px solid var(--border-strong);
+  font-size: 0.9rem;
+}
+
+/* ------------------------------------------------------------------ *
+ * Sixty-second test
+ * ------------------------------------------------------------------ */
+
+.callout.sixty {
+  border-left-color: var(--cache);
+  max-width: 56rem;
+}
+
+.sixty-steps {
+  margin: 12px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.93rem;
+}
+
+.sixty-steps li::marker {
+  color: var(--cache);
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600;
+}
+
+/* ------------------------------------------------------------------ *
+ * Narrow screens
+ *
+ * The roster board is the part that suffers: three rule columns plus a name
+ * and a room does not fit on a phone. It scrolls sideways inside its own
+ * container rather than pushing the page around, the name column stays put
+ * so a scrolled row is still identifiable, and the controls stop trying to
+ * sit in a row.
+ * ------------------------------------------------------------------ */
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .board {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 0.82rem;
+  }
+
+  th,
+  td {
+    padding: 8px 10px;
+  }
+
+  .board td.name {
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 1;
+  }
+
+  tr.is-wrong td.name {
+    background: color-mix(in srgb, var(--bad) 6%, var(--surface));
+  }
+
+  .board thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 2;
+  }
+
+  .scoreline {
+    gap: 8px 14px;
+  }
+
+  .score .num {
+    font-size: 1.1rem;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .section-head {
+    margin-bottom: 20px;
+  }
+
+  /* A crosshair tooltip is useless without a pointer, and it overlaps the plot
+     on a small screen. Charts keep their per-mark <title> tooltips. */
+  .tooltip {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .eq {
+    font-size: 0.82rem;
+  }
+
+  .pill {
+    font-size: 0.66rem;
+  }
+}

@@ -1,0 +1,36 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # No install step: the project has no dependencies.
+      - name: Run the test suite
+        run: npm test
+
+      - name: Rebuild the single-file bundle
+        run: npm run build
+
+      # The published page is committed, so a stale dist/ means the artifact and
+      # the source have drifted. Fail loudly rather than ship the mismatch.
+      - name: Check dist/ is up to date with src/
+        run: |
+          if [ -n "$(git status --porcelain dist/)" ]; then
+            echo "dist/index.html is out of date. Run 'npm run build' and commit the result."
+            git diff --stat dist/
+            exit 1
+          fi
+
+      - name: Reproduce the published experiment numbers
+        run: npm run experiments

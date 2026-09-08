@@ -20,10 +20,13 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const read = (...parts) => readFileSync(join(ROOT, ...parts), 'utf8');
+// Line endings are normalised on read so the bundle is byte-identical whether it
+// was built on a Windows checkout or on Linux CI. Without this the freshness check
+// in .github/workflows/ci.yml fails for a reason that has nothing to do with code.
+const read = (...parts) => readFileSync(join(ROOT, ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 // Dependency order, checked by hand. memory.js depends on nothing; app.js on everything.
-const MODULES = ['memory.js', 'roster.js', 'charts.js', 'ui.js', 'app.js'];
+const MODULES = ['memory.js', 'roster.js', 'charts.js', 'demonstrations.js', 'ui.js', 'app.js'];
 
 const IMPORT = /import[\s\S]*?from\s*['"][^'"]*['"];?/g;
 const EXPORT = /^export\s+(?=const|function|class|let|var)/gm;
