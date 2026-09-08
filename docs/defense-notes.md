@@ -9,13 +9,15 @@ presents should be able to answer all of these without opening a file.
   from how DeltaNet papers write it, which is why our delta rule reads
   `S ← S + βk(v − kᵀS)ᵀ` rather than `S ← S + β(v − Sk)kᵀ`.
 - BDH's rule, verbatim from §1.2: `σ(i,j) += Y(i)X(j)`. Sparsity ~5%, §6.4.
-- Theory curve `√(d/(d+n−1))`. At n = d it gives 0.707.
+- Theory curve `√(d/(d+n−1))`. At n = d it gives √(d/(2d−1)) ≈ 0.713 for d=32; it hits
+  exactly 1/√2 = 0.707 at n = d+1.
 - State: `d²·8` bytes. Cache: `n·d·2·8` bytes. At d=16, n=20: 2 KB vs 5 KB.
 - The headline result: at n = 4d, Hebbian 0.449, delta 0.241, decay 0.125.
-- Recall by age at n=128: Hebbian spread 0.022, delta spread 0.767.
+- Recall by age at n=128: Hebbian spans 0.021 across eight buckets (0.022 if you subtract
+  the rounded table values), delta spans 0.767.
 - State norm at n=512: Hebbian 22.505 (√512 = 22.627), delta 5.647.
 - Sparsity at d=64, n=32: dense 0.823, 5%-sparse 0.833, 25%-sparse 0.634.
-- 33 tests, 40 seeds per experiment cell.
+- 37 tests, 40 seeds per experiment cell.
 
 ## "Is any of this precomputed?"
 

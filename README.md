@@ -20,7 +20,7 @@ which of them is actually better (the answer is "at what?").
 git clone https://github.com/rishighosal/DataForge-BDH.git && cd DataForge-BDH
 npm start          # http://localhost:4173 — no install step, there are no dependencies
 npm test           # 37 assertions over the memory maths
-npm run experiments  # regenerates every number quoted in the docs
+npm run experiments  # prints every number quoted in the docs (-- --save rewrites the JSON)
 npm run build      # flattens src/ into dist/index.html
 npm run pdf        # regenerates the one-page summary PDF from its markdown
 npm run check      # test + build + pdf, the pre-commit gate
@@ -97,7 +97,10 @@ which is a modelling choice we test rather than assume (see `docs/experiments.md
 | `test/` | 37 assertions, `node --test`. |
 | `scripts/serve.js` | ~60-line static server. |
 | `scripts/build.js` | Flattens the modules into one file, and fails if two modules ever declare the same top-level name. |
-| `scripts/experiments.js` | The eight experiments behind `docs/experiments.md`. |
+| `scripts/experiments.js` | The eight experiments behind `docs/experiments.md`. Prints tables; `-- --save` rewrites `results/experiments.json`. |
+| `scripts/one-pager.js` | Typesets `docs/one-pager.md` into the print HTML and the submitted PDF, so the two cannot drift. |
+| `docs/one-pager.md` | Source of truth for the one-page concept summary. Edit this, not the PDF. |
+| `results/experiments.json` | Every measured number, machine-readable. |
 
 There is one implementation of the memory maths and everything imports it. That is a
 deliberate reaction to a bug we hit early, where a Node copy and a browser copy of the same
@@ -167,8 +170,9 @@ quietly lying:
 
 ## Reproducing the numbers
 
-`npm run experiments` prints all eight tables and writes `results/experiments.json`. Forty
-seeds per cell. The headline results:
+`npm run experiments` prints all eight tables; add `-- --save` to also rewrite
+`results/experiments.json`. Forty seeds per cell, and the numbers reproduce exactly —
+only the `generatedAt` timestamp changes between runs. The headline results:
 
 - **Recall against load** (`d=32`): Hebbian tracks `√(d/(d+n−1))` to within 0.007 across the
   whole sweep, and to three decimals at high load (n=128, 192). The gap is widest around
@@ -260,7 +264,8 @@ as we know, has not been independently reproduced.
 
 ## Credits, licences, AI disclosure
 
-- Our code (`src/`, `test/`, `scripts/`) is MIT licensed. See [`LICENSE`](LICENSE).
+- Our code (`src/`, `test/`, `scripts/`) is MIT licensed. See [`LICENSE`](LICENSE), and
+  [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) for what that licence does *not* cover.
 - Fonts: Fraunces, Source Sans 3, IBM Plex Mono, all via Google Fonts under the SIL Open
   Font License. Loaded by URL, not vendored.
 - No other third-party code, data, weights or assets. No dependencies at all — `package.json`
