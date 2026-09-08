@@ -2,7 +2,7 @@
 
 An interactive explainer for the **DataForge 2026 Pathway track** ("Explain the Frontier").
 
-**Live page:** https://USERNAME.github.io/fast-weights-fixed-memory/ *(GitHub Pages; deploys from `main` via `.github/workflows/pages.yml` — replace `USERNAME` once the repo is pushed)*
+**Live page:** https://rishighosal.github.io/fast-weights-fixed-memory/ *(GitHub Pages; deploys from `main` via `.github/workflows/pages.yml` — replace `USERNAME` once the repo is pushed)*
 **Mirror:** https://claude.ai/code/artifact/394c8c5a-8fe6-4a60-a136-c9ba087ad747
 **One-page concept summary:** [`docs/one-pager.pdf`](docs/one-pager.pdf)
 
