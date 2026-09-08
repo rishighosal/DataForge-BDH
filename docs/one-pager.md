@@ -36,9 +36,15 @@ scores 0.454 on the oldest and 0.448 on the newest, a spread of 0.022; it is exa
 order-independent, because `S` is a plain sum. The delta rule scores 0.031 and 0.798.
 Subtracting the current read is an erase, and older content is what gets erased.
 
-The three rules are therefore not better and worse versions of each other. They hold an
-identical state and differ in **how they allocate a fixed amount of fidelity**: evenly
-across history, or concentrated on the recent past.
+The three rules are not better and worse versions of each other. They hold an identical
+state and differ in **how they allocate a fixed amount of fidelity**.
+
+| System | State | Write rule optimises | Fidelity goes to | Strongest public evidence |
+|---|---|---|---|---|
+| Transformer KV cache | grows with every token | nothing; it stores | all of it, exactly | ubiquitous deployment |
+| BDH / BDH-CQ | fixed, `d×d` synapses | nothing; pure accumulation | spread evenly over history | developer-reported |
+| DeltaNet, Gated DeltaNet-2 | fixed | `‖M(k) − v‖²` at the current key | the recent past | developer-reported |
+| Titans | fixed, plus momentum | same objective, learned gate `α_t` | recency, tunably | developer-reported |
 
 The same arithmetic read the other way is why in-context learning works. Write one
 association repeatedly with independent noise on each copy and recall climbs from 0.232 to
@@ -55,8 +61,8 @@ paper itself calls a fast weight. BDH is the pure-accumulation column: no forget
 order-independent, fidelity spread evenly. BDH-CQ (arXiv:2608.09888) applies the same
 additive pattern to demonstrations rather than tokens, which is the accumulation result above.
 
-The obvious objection is that BDH's activations are sparse and non-negative, about 5% active,
-while our toy uses dense Gaussian vectors whose signs cancel. We measured across the gap. At
+BDH's activations are sparse and non-negative, about 5% active, while our toy uses dense
+Gaussian vectors whose signs cancel. We measured it. At
 `d=64` the regimes agree within noise at 5% activation (0.833 vs 0.823 at n=32) and separate
 clearly by 25% (0.634). Two 3-of-64 keys share an active coordinate only 14% of the time, and
 a miss is exact orthogonality, which roughly pays for the lost cancellation.
@@ -68,11 +74,15 @@ mathematics is old; what is unsettled is everything around it. Evidence is conce
 developer-reported benchmarks rather than independent reproductions. Pathway's own open BDH
 repository notes its published Sudoku result came from an internal implementation. Gated
 DeltaNet-2 and Variational Linear Attention, both 2026, are still proposing fixes to the
-interference problem, which is not what a solved area looks like. The largest remaining gaps
-are consolidation (promoting useful fast state into durable weights), the absence of external
-reproductions at scale, and the fact that no member of this family has shown it beats a full
-KV cache on memory *and* exactness at once — the cache's freedom from interference is
-structural, not an engineering lag.
+interference problem, which is not what a solved area looks like.
+
+The most prominent third-party name attached to BDH is Amazon: Pathway is an AWS
+frontier-model partner and BDH is developed on SageMaker HyperPod. That is commercial and
+infrastructure validation, **not** an independent evaluation — nobody outside Pathway has
+reproduced its headline results. The largest remaining gaps are consolidation (promoting fast
+state into durable weights), the absence of external reproductions at scale, and the fact that
+no member of this family beats a full KV cache on memory *and* exactness at once — the cache's
+freedom from interference is structural, not an engineering lag.
 
 ## Evidence classification
 
@@ -90,4 +100,4 @@ Variational Linear Attention (arXiv:2605.11196) targets when it notes a growing 
 causes "progressive interference between stored associations". A fair head-to-head needs a
 metric we do not have.
 
-*Interactive version, source, tests and full experiment tables: see the repository README.*
+*Interactive version, source and full experiment tables: see the repository README.*

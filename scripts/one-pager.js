@@ -111,7 +111,27 @@ td { font-variant-numeric: tabular-nums; }
 `;
 
 const markdown = readFileSync(SOURCE, 'utf8');
-const words = markdown.split(/\s+/).filter(Boolean).length;
+
+/**
+ * Word count against the 500-950 guidance.
+ *
+ * Splitting the raw Markdown on whitespace counts every table pipe as a word, which
+ * overstated the count by about 150 once the comparison table went in and nearly had
+ * us cut real content to satisfy a measurement error. Drop the divider rows, treat
+ * pipes as separators rather than tokens, and ignore heading hashes, so the number
+ * reported is the prose a judge actually reads.
+ */
+const countWords = (src) =>
+  src
+    .split(/\r?\n/)
+    .filter((line) => !/^\s*\|[\s:|-]+\|\s*$/.test(line))
+    .join('\n')
+    .replace(/\|/g, ' ')
+    .replace(/^#{1,3}\s+/gm, '')
+    .split(/\s+/)
+    .filter((token) => /[A-Za-z0-9]/.test(token)).length;
+
+const words = countWords(markdown);
 
 const html = `<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8">

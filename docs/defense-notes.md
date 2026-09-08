@@ -81,8 +81,35 @@ experiment scripts all import that one file. That is deliberate: early on we had
 Node copy and a browser copy that disagreed for the same seed, because one of them
 drew an extra random number per step for the chart series and the streams diverged.
 `scripts/build.js` flattens the modules into `dist/index.html` and fails the build
-if two modules ever declare the same top-level name, since a flat bundle has no
-module scope.
+on two things: two modules declaring the same top-level name, since a flat bundle
+has no module scope, and two elements sharing an `id`. The second check exists
+because we shipped that bug — see the next answer.
+
+## "Did anything actually break, and how did you find it?"
+
+Yes, and it is the most useful thing to be able to answer. The quiz section was
+`<section id="quiz">` with `<div id="quiz">` inside it. `getElementById` returns the
+first match in document order, so the quiz component mounted into the *section* and
+`replaceChildren()` deleted the section heading and intro on every page load.
+
+It survived review because what was left looked correct — the quiz itself rendered
+fine. We found it only when a newly added component disappeared and we could not
+explain why, then dumped the post-JavaScript DOM in headless Chromium and counted
+nodes instead of trusting the screenshot. The build now fails on duplicate ids so
+this specific class of bug cannot come back.
+
+If a judge asks what the difference is between checking the page and testing it,
+this is the example.
+
+## "The write-it-back box — what does it do with my answer?"
+
+Nothing leaves the browser. There is no server and no analytics on this page at all.
+The draft is written to `localStorage` so a reload does not lose it, every access is
+wrapped in try/catch because the page is also meant to open from `file://` where
+storage can throw, and the reference answer is in the page source from the start —
+it is hidden, not fetched. The checklist is deliberately four specific points rather
+than a score, because we cannot mark free text and pretending otherwise would be the
+dishonest version of this feature.
 
 ## "What did the AI do?"
 

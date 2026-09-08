@@ -9,6 +9,7 @@ import {
   createCapacityLab,
   createAgeProfile,
   createQuiz,
+  createExplainBack,
 } from './ui.js';
 import { createDemonstrationLab } from './demonstrations.js';
 
@@ -41,7 +42,7 @@ mount('compare-board', (node) =>
 
 mount('demonstration-lab', (node) => createDemonstrationLab(node, { d: 32, demos: 4, sigma: 0.5 }));
 
-mount('quiz', (node) =>
+mount('quiz-list', (node) =>
   createQuiz(node, [
     {
       question:
@@ -92,3 +93,5 @@ mount('quiz', (node) =>
     },
   ]),
 );
+
+mount('explain-back', createExplainBack);

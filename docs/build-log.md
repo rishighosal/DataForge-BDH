@@ -189,6 +189,51 @@ CRLF on Windows, pure LF on Linux. The CI step that fails when `dist/` has drift
 the code. Normalised line endings on read; the build is now byte-identical across platforms
 and two consecutive builds hash the same.
 
+### 2026-09-08 (later still) — the quiz had been eating its own heading
+
+Went through the submission checklist line by line instead of reading our own page
+sympathetically, and found four things. Three were additions. One was a bug that had been
+live the whole time.
+
+The section is <section id="quiz"> and the mount point inside it was <div id="quiz">. Two
+elements, one id. getElementById returns the first one in document order, which is the
+section, so createQuiz called replaceChildren() on the entire section and deleted its own
+heading, its intro paragraph, and anything else we put in there, on every single page load.
+
+It was invisible in review for a stupid reason: what survived looked fine. The quiz rendered,
+the questions worked, and the missing heading just read as a slightly abrupt section. We only
+caught it because the new write-it-back box vanished, and the box was the thing we could not
+explain away. Renamed the inner node to quiz-list.
+
+The general lesson is that we had been checking the page by looking at it, and looking at it
+is exactly how this survives. So scripts/build.js now fails the build on duplicate ids, the
+same way it already fails on duplicate top-level names. Both are silent-wrong-resolution
+bugs and neither should need a human to notice.
+
+### 2026-09-08 — three additions from the same audit
+
+1. **Citations were at the bottom, not beside the claims.** The submission asks for citations
+   beside technical claims and the page named papers in prose without linking them. Thirteen
+   inline markers now sit next to the sentences they support and jump to the matching
+   reference, which highlights on arrival.
+2. **No way to explain the idea back.** A multiple-choice quiz tests recognition. The track
+   asks whether a learner can explain the concept in their own words, which is a different
+   and harder thing. Added a box that takes your explanation first and only then shows ours,
+   with a four-point checklist to mark yourself against. Nothing is sent anywhere.
+3. **Audience and objectives lived only in the README.** Moved onto the page, where the
+   learner is.
+
+### 2026-09-08 — the word counter was counting pipe characters
+
+Adding the architecture comparison table to the one-pager pushed the reported count to 1091
+words against a 950 ceiling, and we started cutting real content to get under it. Then noticed
+the counter was splitting the raw Markdown on whitespace, so every | in a table counted as a
+word. The table is five columns wide; it was contributing about 80 phantom words.
+
+Fixed the counter to drop divider rows and treat pipes as separators. The honest count was
+1013, so there was still trimming to do, but 60 words of trimming rather than 140. Worth
+writing down because we were one step away from deleting a paragraph to satisfy a bug.
+
 ### Still open
 
 - β for the delta rule is hard-coded to 1 everywhere. There is almost certainly
@@ -201,4 +246,5 @@ and two consecutive builds hash the same.
   being demonstrated at once, which is closer to what an in-context learner actually
   faces.
 - Nobody outside the team has sat down with the page yet. The sixty-second path is our
-  guess at where a stranger starts, not an observation.
+  guess at where a stranger starts, not an observation, and the write-it-back box has
+  never been answered by someone who did not already know the answer.

@@ -64,9 +64,33 @@ function assertNoCollisions() {
   return seen.size;
 }
 
+/**
+ * Two elements sharing an id is legal HTML that browsers will happily render, but
+ * getElementById returns whichever comes first, so a mount point that collides with
+ * an enclosing section id silently mounts into the section and replaceChildren()
+ * eats the whole thing. That shipped once: <section id="quiz"> and the <div id="quiz">
+ * inside it meant the quiz component wiped its own heading on every load, and it was
+ * invisible in review because the part that survived looked correct.
+ */
+function assertUniqueIds(html) {
+  const seen = new Set();
+  const dupes = [];
+  for (const [, id] of html.matchAll(/\sid="([^"]+)"/g)) {
+    if (seen.has(id)) dupes.push(id);
+    else seen.add(id);
+  }
+  if (dupes.length) {
+    console.error('Duplicate element ids in index.html; getElementById would pick the wrong node:');
+    for (const id of [...new Set(dupes)]) console.error(`  - ${id}`);
+    process.exit(1);
+  }
+  return seen.size;
+}
+
 const symbolCount = assertNoCollisions();
 
 const html = read('index.html');
+const idCount = assertUniqueIds(html);
 const css = read('src', 'styles.css');
 const js = bundle();
 
@@ -107,5 +131,5 @@ writeFileSync(join(ROOT, 'dist', 'index.html'), out);
 
 const kb = (Buffer.byteLength(out, 'utf8') / 1024).toFixed(1);
 console.log(`dist/index.html  ${kb} KB`);
-console.log(`  ${MODULES.length} modules, ${symbolCount} top-level names, no collisions`);
+console.log(`  ${MODULES.length} modules, ${symbolCount} top-level names, ${idCount} unique ids, no collisions`);
 console.log(`  css ${(css.length / 1024).toFixed(1)} KB, js ${(js.length / 1024).toFixed(1)} KB`);

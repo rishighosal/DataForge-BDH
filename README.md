@@ -87,7 +87,7 @@ which is a modelling choice we test rather than assume (see `docs/experiments.md
 | `src/roster.js` | The hall-allotment task and the decoder that turns a readout back into a room. |
 | `src/charts.js` | SVG line chart, grouped bars, matrix heatmap, vector bars. No chart library. |
 | `src/demonstrations.js` | The BDH-CQ panel: accumulation as evidence rather than damage. |
-| `src/ui.js` | The four other interactive components. Each recomputes from scratch on any change. |
+| `src/ui.js` | The other five interactive components, including the write-it-back box. Each recomputes from scratch on any change. |
 | `src/app.js` | Mounts components into the page. Holds no logic. |
 | `src/styles.css` | Design tokens and layout, light and dark. |
 | `index.html` | Dev entry. Loads `src/` as ES modules, so it needs `npm start`. |
@@ -100,6 +100,39 @@ which is a modelling choice we test rather than assume (see `docs/experiments.md
 There is one implementation of the memory maths and everything imports it. That is a
 deliberate reaction to a bug we hit early, where a Node copy and a browser copy of the same
 function disagreed for the same seed (`docs/build-log.md`, 2026-09-07).
+
+`scripts/build.js` refuses to build on two conditions: two modules declaring the same
+top-level name, and two elements sharing an `id`. Both are things the flat bundle or
+`getElementById` would resolve silently and wrongly. The second one is there because it
+already happened to us — see the build log for 2026-09-08.
+
+### Using the memory as a library
+
+`src/memory.js` has no imports, no DOM, and no dependencies, so it works as a teaching
+module on its own — in a notebook, a lecture demo, or your own experiment. That was a design
+goal rather than an accident; it is the part of this we would want someone to reuse.
+
+```js
+import {
+  FastWeightMemory, KVCache, cosine, theoreticalCosine, mulberry32, randomUnitVector,
+} from './src/memory.js';
+
+const rng = mulberry32(42);                           // seeded, so runs reproduce
+const memory = new FastWeightMemory(64, 'hebbian');   // or 'delta' | 'decay'
+
+const key = randomUnitVector(64, rng);
+const value = randomUnitVector(64, rng);
+
+memory.write(key, value);                // S <- S + k v^T
+cosine(memory.read(key), value);         // 1.0000 — nothing to interfere with yet
+theoreticalCosine(1, 64);                // 1.0000 — what the derivation predicts
+
+memory.bytes();                          // 32768, and stays 32768 however much you write
+new KVCache(64).bytes();                 // 0, then 1024 more with every write
+```
+
+`runTrial({ d, n, seed, rule, params, keyMode })` runs a whole sweep and returns the per-step
+series the charts draw. Every number in `docs/experiments.md` comes out of that one function.
 
 ### The three write rules
 

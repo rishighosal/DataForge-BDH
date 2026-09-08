@@ -582,3 +582,103 @@ export function createQuiz(root, items) {
     root.appendChild(wrap);
   });
 }
+/**
+ * The write-it-back box.
+ *
+ * Recognising the right option in a multiple-choice list is a much weaker test
+ * than producing the explanation yourself, and the track asks that a learner be
+ * able to explain the concept back in their own words. So: an empty box, no
+ * marking, and a reference answer you only see after you have committed to your
+ * own. The checklist is there because self-marking against a paragraph is vague
+ * and self-marking against four specific points is not.
+ *
+ * Nothing is sent anywhere. The draft is kept in localStorage so a reload does
+ * not lose it, and every access is guarded because the page is also meant to
+ * open from a file:// URL where storage can throw.
+ */
+const DRAFT_KEY = 'ffm-explain-draft';
+
+const readDraft = () => {
+  try {
+    return localStorage.getItem(DRAFT_KEY) ?? '';
+  } catch {
+    return '';
+  }
+};
+
+const writeDraft = (value) => {
+  try {
+    localStorage.setItem(DRAFT_KEY, value);
+  } catch {
+    /* private window, blocked storage, thumbnailer — the box still works */
+  }
+};
+
+const RUBRIC = [
+  'Said the state is a fixed size and does not grow when you store more.',
+  'Named the mechanism: writes are summed into shared dimensions, so every read picks up crosstalk from the others.',
+  'Said the failure is a confident wrong answer — another key\u2019s value — rather than noise or a blank.',
+  'Said a different write rule reallocates fidelity (recent vs. even) instead of creating more of it.',
+];
+
+const MODEL_ANSWER =
+  'A fast-weight memory keeps one matrix of a fixed size. Storing a fact adds the ' +
+  'outer product of its key and value into that same matrix, so nothing is ever ' +
+  'allocated and nothing is ever deleted. Reading with a key returns that fact plus ' +
+  'a fraction of every other fact whose key is not perfectly perpendicular to it, and ' +
+  'that crosstalk grows as you add more facts into the same dimensions. So the memory ' +
+  'does not run out and it does not error \u2014 it blends, and hands you another stored ' +
+  'value with full confidence. Rules like the delta update or a decay gate change who ' +
+  'keeps the fidelity, favouring recent writes, but the total amount of it is set by ' +
+  'the size of the state, not by the rule.';
+
+export function createExplainBack(root) {
+  root.replaceChildren();
+
+  const prompt = el(
+    'p',
+    'explain-prompt',
+    'A colleague asks why a fixed-size memory gets facts wrong when a KV cache does not. ' +
+      'Answer in three or four sentences, without scrolling up.',
+  );
+
+  const box = el('textarea', 'explain-box');
+  box.rows = 6;
+  box.placeholder = 'Your explanation…';
+  box.setAttribute('aria-label', 'Your explanation of the claim');
+  box.value = readDraft();
+
+  const count = el('span', 'explain-count');
+  const reveal = el('button', 'btn');
+  reveal.type = 'button';
+  reveal.textContent = 'Compare with ours';
+
+  const bar = el('div', 'explain-bar');
+  bar.append(count, reveal);
+
+  const answer = el('div', 'explain-answer');
+  answer.hidden = true;
+  answer.innerHTML =
+    '<p class="explain-answer-label">One way to put it</p>' +
+    `<p class="explain-answer-body">${MODEL_ANSWER}</p>` +
+    '<p class="explain-answer-label" style="margin-top:14px">Did yours cover these?</p>' +
+    `<ul class="explain-rubric">${RUBRIC.map((r) => `<li>${r}</li>`).join('')}</ul>` +
+    '<p class="explain-note">Wording does not matter. If you got the first three, you ' +
+    'have the claim; the fourth is the part most people miss.</p>';
+
+  const sync = () => {
+    const words = box.value.trim().split(/\s+/).filter(Boolean).length;
+    count.textContent = words === 0 ? 'no words yet' : `${words} word${words === 1 ? '' : 's'}`;
+    writeDraft(box.value);
+  };
+
+  box.addEventListener('input', sync);
+  reveal.addEventListener('click', () => {
+    answer.hidden = false;
+    reveal.disabled = true;
+    reveal.textContent = 'Model answer shown';
+  });
+
+  sync();
+  root.append(prompt, box, bar, answer);
+}

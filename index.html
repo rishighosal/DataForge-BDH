@@ -50,7 +50,7 @@
     </h1>
     <div class="prose" style="margin-top:16px">
       <p>We wrote a hall allotment into a fixed-size matrix, the same way the Dragon
-      Hatchling architecture writes a conversation into its synapses: one outer-product
+      Hatchling architecture writes a conversation into its synapses<a class="cite" href="#ref1" title="Jump to source 1">[1]</a>: one outer-product
       update per fact, nothing else. Then we asked it where each student lives. The
       answers below are computed in your browser as you load this page.</p>
     </div>
@@ -128,6 +128,28 @@
         that happened while building this.</p>
       </div>
     </div>
+    <div class="card" style="margin-top:26px">
+      <p class="eyebrow">Who this is for, and what you should be able to do afterwards</p>
+      <p class="prose muted" style="margin-top:10px; max-width:62rem">
+        Written for someone comfortable with a dot product and a matrix&ndash;vector
+        product, and curious about what sits behind the phrase &ldquo;fast weights&rdquo;.
+        No machine-learning background is assumed and nothing here needs a GPU. If you
+        have met a KV cache and want to know what the alternative actually is, that is
+        the gap this fills.
+      </p>
+      <ol class="objectives">
+        <li>Write down <span class="mono">S &larr; S + k v&#x1d40;</span> and say what it costs in memory.</li>
+        <li>Predict what happens to recall when <span class="mono">n</span> rises or
+          <span class="mono">d</span> falls, then check the prediction live.</li>
+        <li>Explain why the failure mode is a confident wrong answer rather than noise.</li>
+        <li>Say what BDH&rsquo;s <span class="mono">&sigma;(i,j) += Y(i)X(j)</span> has to do with
+          linear attention and fast weights.</li>
+        <li>Name what the delta rule and a decay gate buy, and what they spend to buy it.</li>
+        <li>Explain why the same superposition that loses facts is what lets a state learn a
+          rule from repeated demonstrations &mdash; BDH-CQ&rsquo;s contextual memory in miniature.</li>
+        <li>Tell our toy model apart from what the papers actually report.</li>
+      </ol>
+    </div>
   </div>
 </section>
 
@@ -186,7 +208,7 @@
           <h3 style="color:var(--hebbian)">Hebbian</h3>
           <div class="eq" style="margin:10px 0">S ← S + k vᵀ</div>
           <p class="muted" style="font-size:.9rem">Add and never subtract. This is BDH's
-          synaptic update, and it is order-independent: shuffle the writes and you get the
+          synaptic update<a class="cite" href="#ref1" title="Jump to source 1">[1]</a>, and it is order-independent: shuffle the writes and you get the
           identical matrix.</p>
         </div>
         <div class="card">
@@ -194,14 +216,14 @@
           <div class="eq" style="margin:10px 0">S ← S + β k (v − kᵀS)ᵀ</div>
           <p class="muted" style="font-size:.9rem">Read the key first, then write only the
           difference. Gated DeltaNet-2 puts it in one line: "delta-rule models subtract the
-          current read before writing a new value." It is also one gradient step on Titans'
-          memory loss ‖M(k) − v‖².</p>
+          current read before writing a new value."<a class="cite" href="#ref4" title="Jump to source 4">[4]</a> It is also one gradient step on Titans'
+          memory loss ‖M(k) − v‖²<a class="cite" href="#ref3" title="Jump to source 3">[3]</a>.</p>
         </div>
         <div class="card">
           <h3 style="color:var(--decay)">Decay gate</h3>
           <div class="eq" style="margin:10px 0">S ← λS + k vᵀ</div>
           <p class="muted" style="font-size:.9rem">Fade everything slightly before each
-          write. This is Titans' forgetting gate with λ held fixed instead of learned. At
+          write. This is Titans' forgetting gate<a class="cite" href="#ref3" title="Jump to source 3">[3]</a> with λ held fixed instead of learned. At
           λ = 1 it is exactly Hebbian, which is why the slider goes that far.</p>
         </div>
       </div>
@@ -254,7 +276,7 @@
           <p>The Dragon Hatchling paper defines working memory as a synapse strength
           σ(i,j) between two neurons, changed during inference by a rule it states in
           words: co-presence of Y(i) followed by X(j) increases σ(i,j) by Y(i)X(j)
-          (§1.2). Written out, that is:</p>
+          (§1.2)<a class="cite" href="#ref1" title="Jump to source 1">[1]</a>. Written out, that is:</p>
         </div>
         <div class="eq">σ(i,j) ← σ(i,j) + Y(i)·X(j)</div>
         <div class="prose">
@@ -263,7 +285,7 @@
           and connects it to a linear-attention view. Our demo swaps neuron indices for
           vector components and stops there.</p>
           <p>The honest gap is the activations. BDH's Y and X are sparse and non-negative,
-          roughly 5% of neurons active at a time (§6.4). Ours are dense Gaussian vectors
+          roughly 5% of neurons active at a time (§6.4)<a class="cite" href="#ref1" title="Jump to source 1">[1]</a>. Ours are dense Gaussian vectors
           whose signs cancel. Rather than list that as a caveat and move on, we measured
           it.</p>
         </div>
@@ -308,15 +330,15 @@
             and we have not run BDH. This is our own toy model of the mechanism, at a scale
             small enough to check by hand.</p>
             <p><strong>Independently corroborated:</strong> the interference phenomenon
-            itself. Variational Linear Attention (2026) opens by noting that a linear
+            itself. Variational Linear Attention<a class="cite" href="#ref5" title="Jump to source 5">[5]</a> (2026) opens by noting that a linear
             attention state's norm grows with sequence length, "causing progressive
-            interference between stored associations." Gated DeltaNet-2 (2026) exists to
+            interference between stored associations." Gated DeltaNet-2<a class="cite" href="#ref4" title="Jump to source 4">[4]</a> (2026) exists to
             edit that compressed memory "without scrambling existing associations." We are
             demonstrating a known problem, not discovering one.</p>
             <p><strong>Where BDH-CQ comes in:</strong> its contextual memory accumulates
             additively as each demonstration arrives, the same write-don't-replace pattern
             one level up from tokens. Its headline result (29.5% pass@2 on ARC-AGI-1 at
-            $0.0007 per task, 150M parameters) is reported by its authors and has not been
+            $0.0007 per task, 150M parameters)<a class="cite" href="#ref2" title="Jump to source 2">[2]</a> is reported by its authors and has not been
             independently reproduced, by us or as far as we know by anyone else.</p>
           </div>
         </div>
@@ -326,7 +348,7 @@
           <p class="prose" style="font-size:.9rem">Measured at d=32: the Hebbian state's
           Frobenius norm tracks √n almost exactly (22.51 measured against 22.63 predicted at
           n=512), while the delta rule saturates near 5.6 and stops growing. That unbounded
-          growth is exactly what Variational Linear Attention targets. Our recall metric is
+          growth is exactly what Variational Linear Attention targets<a class="cite" href="#ref5" title="Jump to source 5">[5]</a>. Our recall metric is
           cosine, which is scale-invariant, so it is blind to it by construction. In a real
           network the growing norm interacts with normalisation layers and finite precision
           and causes trouble that this page cannot show you. We think that is the most
@@ -353,7 +375,7 @@
       <div class="prose">
         <p>BDH-CQ's contextual memory accumulates additively as each demonstration arrives.
         Its own paper connects that to fast-weight and linear-attention views of contextual
-        association. Additive accumulation has a property worth seeing directly: write the
+        association<a class="cite" href="#ref2" title="Jump to source 2">[2]</a>. Additive accumulation has a property worth seeing directly: write the
         same association several times with different noise on it each time, and the signal
         is identical on every write so it adds coherently, while the noise is different on
         every write so it partly cancels.</p>
@@ -385,7 +407,7 @@
         <p>This is a toy of the accumulation mechanism, not an implementation of BDH-CQ. BDH-CQ
         ingests real ARC-style demonstrations, has a separate latent workspace that iterates on
         the query, and reports 29.5% pass@2 on ARC-AGI-1 at $0.0007 per task with 150M
-        parameters. We have implemented none of that and reproduced none of it; the figure is
+        parameters<a class="cite" href="#ref2" title="Jump to source 2">[2]</a>. We have implemented none of that and reproduced none of it; the figure is
         its authors' and we cite it as theirs. What we can show is the one property the
         contextual state gets from being additive, at a scale where you can check it against a
         closed form: the conflicting-evidence table lands on <span class="mono">a/√(a²+b²)</span>
@@ -523,11 +545,18 @@
     <div class="section-head">
       <p class="eyebrow">Check yourself</p>
       <h2>Five questions</h2>
-      <p class="prose muted">If these are easy, the page worked. If not, the sandbox above
-      answers all four.</p>
+      <p class="prose muted">If these are easy, the page worked. If not, every one of them is answerable
+      from the panels above.</p>
     </div>
     <div style="max-width:640px">
-      <div id="quiz"></div>
+      <div id="quiz-list"></div>
+    </div>
+    <div style="max-width:640px; margin-top:34px">
+      <p class="eyebrow">And in your own words</p>
+      <h3 style="margin:10px 0 14px">The real test</h3>
+      <div class="panel">
+        <div id="explain-back"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -537,27 +566,27 @@
   <div class="wrap">
     <p class="eyebrow">Primary sources</p>
     <div class="sources" style="margin-top:14px">
-      <div><span class="ref">[1]</span> Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz.
+      <div id="ref1"><span class="ref">[1]</span> Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz.
         <em>The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain.</em>
         <a href="https://arxiv.org/abs/2509.26507">arXiv:2509.26507</a>, September 2025.
         Source for the σ(i,j) += Y(i)X(j) update (§1.2), the "fast weights" framing, and ~5% activation sparsity (§6.4).</div>
-      <div><span class="ref">[2]</span> Engdahl, Kosowski, Chorowski, Stamirowska, Uznański, Jiang, Phadke, Kinas, Zhong.
+      <div id="ref2"><span class="ref">[2]</span> Engdahl, Kosowski, Chorowski, Stamirowska, Uznański, Jiang, Phadke, Kinas, Zhong.
         <em>BDH-CQ: In-Context Learning with Recurrent Latent Reasoning.</em>
         <a href="https://arxiv.org/abs/2608.09888">arXiv:2608.09888</a>, August 2026.
         Additive contextual memory; 29.5% pass@2 on ARC-AGI-1 at $0.0007 per task with 150M parameters.</div>
-      <div><span class="ref">[3]</span> Behrouz, Zhong, Mirrokni.
+      <div id="ref3"><span class="ref">[3]</span> Behrouz, Zhong, Mirrokni.
         <em>Titans: Learning to Memorize at Test Time.</em>
         <a href="https://arxiv.org/abs/2501.00663">arXiv:2501.00663</a>, December 2024.
         Memory loss ‖M(k)−v‖² (eq. 11–12) and the forgetting gate M<sub>t</sub> = (1−α<sub>t</sub>)M<sub>t−1</sub> + S<sub>t</sub> (eq. 13).</div>
-      <div><span class="ref">[4]</span> Hatamizadeh, Choi, Kautz.
+      <div id="ref4"><span class="ref">[4]</span> Hatamizadeh, Choi, Kautz.
         <em>Gated DeltaNet-2: Decoupling Erase and Write in Linear Attention.</em>
         <a href="https://arxiv.org/abs/2605.22791">arXiv:2605.22791</a>, May 2026.
         "Delta-rule models subtract the current read before writing a new value"; separate erase and write gates.</div>
-      <div><span class="ref">[5]</span> Pandey, Singh.
+      <div id="ref5"><span class="ref">[5]</span> Pandey, Singh.
         <em>Variational Linear Attention: Stable Associative Memory for Long-Context Transformers.</em>
         <a href="https://arxiv.org/abs/2605.11196">arXiv:2605.11196</a>, May 2026.
         State norm growing as O(T) "causing progressive interference between stored associations."</div>
-      <div><span class="ref">[6]</span> Pathway. <em>BDH reference implementation.</em>
+      <div id="ref6"><span class="ref">[6]</span> Pathway. <em>BDH reference implementation.</em>
         <a href="https://github.com/pathwaycom/bdh">github.com/pathwaycom/bdh</a>, MIT licensed.
         Its README notes the published Sudoku Extreme result came from an internal implementation and is not reproduced by the open repository.</div>
     </div>

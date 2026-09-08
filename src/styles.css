@@ -759,6 +759,121 @@ tr.is-wrong {
 }
 
 /* ------------------------------------------------------------------ *
+ * Write-it-back box
+ * ------------------------------------------------------------------ */
+
+.explain-prompt {
+  font-size: 0.95rem;
+  color: var(--ink-muted);
+  margin-bottom: 12px;
+}
+
+.explain-box {
+  width: 100%;
+  font-family: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+.explain-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.explain-count {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.74rem;
+  color: var(--ink-faint);
+}
+
+.explain-answer {
+  margin-top: 18px;
+  border-left: 3px solid var(--cache);
+  background: var(--surface-alt);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  padding: 16px 20px;
+}
+
+.explain-answer-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.71rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--cache);
+  margin-bottom: 8px;
+}
+
+.explain-answer-body {
+  font-size: 0.93rem;
+  line-height: 1.6;
+}
+
+.explain-rubric {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
+}
+
+.explain-rubric li + li {
+  margin-top: 5px;
+}
+
+.explain-note {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------ *
+ * Learning objectives
+ * ------------------------------------------------------------------ */
+
+.objectives {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 14px 26px;
+  margin-top: 16px;
+  padding: 0;
+  list-style: none;
+  counter-reset: objective;
+}
+
+.objectives li {
+  position: relative;
+  padding-left: 30px;
+  font-size: 0.92rem;
+  color: var(--ink-muted);
+  counter-increment: objective;
+}
+
+.objectives li::before {
+  content: counter(objective);
+  position: absolute;
+  left: 0;
+  top: 1px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--border-strong);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------------ *
  * Footer
  * ------------------------------------------------------------------ */
 
@@ -780,6 +895,33 @@ footer {
   font-size: 0.72rem;
   color: var(--ink-faint);
   margin-right: 6px;
+}
+
+/* Inline citation marker. Sits beside the claim it supports and jumps to the
+   matching row in the source list, which is highlighted briefly on arrival so
+   you can see which one you landed on. */
+.cite {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.68em;
+  font-weight: 600;
+  vertical-align: super;
+  line-height: 0;
+  margin-left: 1px;
+  padding: 0 1px;
+  color: var(--cache);
+  text-decoration: none;
+  border-bottom: none;
+}
+
+.cite:hover,
+.cite:focus-visible {
+  text-decoration: underline;
+}
+
+.sources > div:target {
+  background: var(--surface-alt);
+  box-shadow: 0 0 0 8px var(--surface-alt);
+  border-radius: 2px;
 }
 
 .colophon {
