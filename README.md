@@ -19,7 +19,7 @@ which of them is actually better (the answer is "at what?").
 ```
 git clone https://github.com/rishighosal/DataForge-BDH.git && cd DataForge-BDH
 npm start          # http://localhost:4173 — no install step, there are no dependencies
-npm test           # 37 assertions over the memory maths
+npm test           # 37 tests, 60 assertions, over the memory maths
 npm run experiments  # prints every number quoted in the docs (-- --save rewrites the JSON)
 npm run build      # flattens src/ into dist/index.html
 npm run pdf        # regenerates the one-page summary PDF from its markdown
@@ -50,6 +50,10 @@ would be that rule. It is not, and finding that out is what the project ended up
 
 ## Who it is for
 
+**Approved topic:** Associative Memory and Fast Weights, using the Key–Value Caching
+topic's baseline (a Transformer's cache) as the point of comparison throughout — one central
+claim, not two topics stitched together.
+
 Anyone who knows what a dot product is. No machine-learning background needed and no linear
 algebra beyond "a matrix times a vector is a vector". If you have heard of a KV cache and
 want to know what a *fast weight* actually is, that is exactly the gap this fills.
@@ -65,7 +69,7 @@ want to know what a *fast weight* actually is, that is exactly the gap this fill
    from repeated demonstrations, which is BDH-CQ's contextual memory in miniature.
 7. Say which parts of the page are our toy model and which parts are in the papers.
 
-## What is live, what is precomputed, what is synthetic
+## What is live, what is precomputed, what is synthetic, what is animated
 
 **Live.** Every score, chart, table cell and heatmap in the artifact is computed in the
 browser from a seeded generator when the page loads, and recomputed whenever you move a
@@ -81,6 +85,9 @@ allotment; the hall abbreviations are the familiar IIT Kharagpur ones because th
 should read like room codes to the people in the room. Keys and values are random vectors,
 which is a modelling choice we test rather than assume (see `docs/experiments.md` §4).
 
+**Animated.** None. Every visual change on the page is a direct re-render of a real
+computation triggered by your input, not a scripted transition standing in for one.
+
 ## Architecture
 
 | Path | Role |
@@ -94,7 +101,7 @@ which is a modelling choice we test rather than assume (see `docs/experiments.md
 | `src/styles.css` | Design tokens and layout, light and dark. |
 | `index.html` | Dev entry. Loads `src/` as ES modules, so it needs `npm start`. |
 | `dist/index.html` | Built single file. Opens straight off disk; this is what gets published. |
-| `test/` | 37 assertions, `node --test`. |
+| `test/` | 37 tests, 60 `assert` calls, `node --test`. |
 | `scripts/serve.js` | ~60-line static server. |
 | `scripts/build.js` | Flattens the modules into one file, and fails if two modules ever declare the same top-level name. |
 | `scripts/experiments.js` | The eight experiments behind `docs/experiments.md`. Prints tables; `-- --save` rewrites `results/experiments.json`. |
