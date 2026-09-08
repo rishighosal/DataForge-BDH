@@ -1,6 +1,7 @@
 # Third-party notices
 
-The MIT licence in [`LICENSE`](LICENSE) covers the original work in this repository:
+The MIT licence in [`LICENSE`](LICENSE) is held by Rishi Ghosal, Sudip Manna and
+Subhankar Nandi, and covers the original work in this repository:
 `src/`, `test/`, `scripts/`, `index.html`, the generated `dist/index.html`, and the
 documents under `docs/`.
 

@@ -2,6 +2,8 @@
 
 An interactive explainer for the **DataForge 2026 Pathway track** ("Explain the Frontier").
 
+**Team:** Rishi Ghosal, Sudip Manna, Subhankar Nandi
+
 **Live page:** https://rishighosal.github.io/DataForge-BDH/ — opens without sign-in, no build step
 *(GitHub Pages, deployed from `main` by `.github/workflows/pages.yml`)*
 **Source:** https://github.com/rishighosal/DataForge-BDH
@@ -279,13 +281,30 @@ as we know, has not been independently reproduced.
   has no `dependencies` or `devDependencies` block.
 - BDH and BDH-CQ are Pathway's work. We cite and discuss them; we redistribute nothing.
 
-**AI assistance.** We used Claude Code (Sonnet 5, later Opus 5) throughout as a coding and
-drafting assistant: it wrote much of the component and chart code, the first drafts of this
-README and the one-pager, and it did the initial literature search. What we did: chose the
+**AI assistance.** Declared in full, in two phases.
+
+*Building it.* We used Claude Code (Sonnet 5, later Opus 5) as a coding and drafting
+assistant: it wrote much of the component and chart code, the first drafts of this README
+and the one-pager, and it did the initial literature search. What the team did: chose the
 claim, designed the roster task and the experiments, re-derived the theory curve and the
 delta-rule transposition by hand, checked every equation, quotation, section number and
 figure against the primary papers, and wrote the tests that encode the claims. Two errors
 the assistant introduced and we caught are written up in
 [`docs/build-log.md`](docs/build-log.md) (2026-09-08), along with the metric mistake and the
-RNG desync that cost us most of an evening. We can trace and defend every component; that is
-what `docs/defense-notes.md` is for.
+RNG desync that cost us most of an evening.
+
+*Reviewing it.* Before submission we ran a second AI-assisted pass — Claude, in a chat
+session with sandboxed code execution and push access we granted — auditing the repository
+against the problem statement. That pass found and fixed: a dead GitHub Pages URL and a
+sign-in-gated mirror link; a missing link from the published page back to this repository;
+three overstated numeric claims (a "three decimals" agreement that only held at high load, a
+self-contradicting age-spread figure, and a 0.5% state-norm bound that was 0.54%); a README
+instruction that omitted the `--save` flag needed to regenerate `results/experiments.json`;
+a LICENSE addendum that broke GitHub's licence detection and referenced a directory that
+does not exist; three stale figures in `docs/defense-notes.md`; and an inaccurate
+"37 assertions" count. Commits `d11fd7f` through `14a3a3c` are that pass. They were made
+under a team member's git identity with our authorisation; the reasoning behind each is in
+its commit message.
+
+We can trace and defend every component of this repository, including the changes from that
+review pass; that is what [`docs/defense-notes.md`](docs/defense-notes.md) is for.
